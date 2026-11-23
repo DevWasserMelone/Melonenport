@@ -1,7 +1,7 @@
 {
   "name": "melonenport",
   "productName": "Melonenport",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Wandelt GTA5-Mods-Fahrzeuge und Flugzeuge in FiveM-Resources um",
   "author": "DevWasserMelone",
   "main": "electron/main.js",

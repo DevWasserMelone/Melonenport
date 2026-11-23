@@ -173,6 +173,9 @@ ipcMain.handle('l:publish', async (e, d) => {
   if (!token) throw new Error('Kein Token gespeichert.');
   const html = fs.readFileSync(d.file);
   if (!/<html/i.test(html.toString('utf8', 0, 4000))) throw new Error('Das ist keine gültige index.html.');
+  const title = ((html.toString('utf8', 0, 4000).match(/<title>([^<]*)/i) || [])[1] || '').trim();
+  if (!/^Melonenport\b/i.test(title)) throw new Error('Falsche Datei: Das ist „' + (title || 'unbekannt') + '“, hier gehört nur eine Melonenport-Datei rein.');
+  if (!/\/Melonenport$/i.test(rp)) throw new Error('Falsches Repository eingestellt („' + rp + '“). Richtig ist DevWasserMelone/Melonenport – mit Strg + Umschalt + P ändern.');
   const version = String(d.version || '').trim();
   if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Version bitte im Format 1.0.1 angeben.');
   const auth = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' };
