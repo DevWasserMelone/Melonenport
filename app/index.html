@@ -126,11 +126,24 @@ body.hacker .res code{background:#03110a;color:var(--green)}
   <section class="col">
     <div class="colhead">Einstellungen</div>
     <div class="set">
+      <h3>FiveM-Server</h3>
+      <div class="row">
+        <button class="btn main" id="srvPick" style="width:100%">🖥️ Server verbinden …</button>
+        <div class="path" id="srvInfo">Wähl den Ordner deines Servers (da wo die <b>server.cfg</b> liegt). Danach landen alle Mods direkt dort und werden automatisch eingetragen.</div>
+      </div>
+      <div id="srvOpts" style="display:none">
+        <label class="chk"><input type="checkbox" id="optCfgAuto"><span>Automatisch in die server.cfg eintragen<small>Vorher wird einmal eine Sicherung angelegt</small></span></label>
+        <label class="chk"><input type="checkbox" id="optLive"><span>Sofort live laden, wenn der Server läuft<small>Kein Neustart nötig, im Spiel einmal neu verbinden</small></span></label>
+        <div class="path" id="srvLiveInfo"></div>
+        <button class="btn sm" id="srvRconSet" style="margin-top:6px;display:none">Live-Laden einrichten</button>
+        <div style="display:flex;gap:6px;margin-top:8px"><button class="btn sm" id="srvOpen">Server-Ordner öffnen</button><button class="btn sm" id="srvOff">Trennen</button></div>
+      </div>
+
       <h3>Ausgabe</h3>
       <div class="row">
         <label class="t">Ausgabeordner</label>
         <button class="btn" id="outPick" style="width:100%">📁 Ordner wählen …</button>
-        <div class="path" id="outPath">Noch keiner gewählt. Am besten direkt den <b>resources</b>-Ordner deines Servers, z. B. <i>resources/[fahrzeuge]</i>.</div>
+        <div class="path" id="outPath">Noch keiner gewählt. Entweder der <b>resources</b>-Ordner deines Servers oder ein Sammelordner, z. B. „FiveM Fahrzeuge“ auf dem Desktop. Den ziehst du später einfach auf den Server.</div>
         <button class="btn sm" id="outOpen" style="margin-top:6px;display:none">Ordner öffnen</button>
       </div>
       <div class="row">
@@ -727,11 +740,102 @@ if (typeof module !== 'undefined') module.exports = MP;
   function outUi() {
     if (S.outDir) { $('outPath').textContent = S.outDir; $('outOpen').style.display = ''; $('outPick').textContent = '📁 Anderen Ordner wählen …'; }
   }
-  $('outPick').onclick = async function () { var d = await mk.pickFolder('Ausgabeordner wählen (z. B. resources deines Servers)'); if (d) { S.outDir = d; save(); outUi(); } };
+  $('outPick').onclick = async function () { var d = await mk.pickFolder('Ausgabeordner wählen (z. B. resources deines Servers)'); if (d) { S.outDir = d; save(); outUi(); if (S.server && d !== S.server.res) toast('Hinweis: Mods landen jetzt nicht mehr direkt auf dem Server'); } };
   $('outOpen').onclick = function () { if (S.outDir) mk.openFolder(S.outDir); };
   function cfgUi() { $('cfg').value = S.cfg.map(function (n) { return 'ensure ' + n; }).join('\n'); }
-  function addCfg(n) { if (S.cfg.indexOf(n) < 0) { S.cfg.push(n); if (S.cfg.length > 200) S.cfg.shift(); save(); } cfgUi(); }
+  function addCfg(n) {
+    if (S.cfg.indexOf(n) < 0) { S.cfg.push(n); if (S.cfg.length > 200) S.cfg.shift(); }
+    S.byDir = S.byDir || {}; var l = S.byDir[S.outDir] = S.byDir[S.outDir] || [];
+    if (l.indexOf(n) < 0) l.push(n);
+    save(); cfgUi();
+    // Merkzettel im Ausgabeordner, damit die Zeilen später beim Server-Einrichten da sind
+    var txt = '# Diese Zeilen in die server.cfg deines FiveM-Servers kopieren\r\n# (die Ordner daneben vorher in den resources-Ordner vom Server ziehen)\r\n\r\n' + l.map(function (x) { return 'ensure ' + x; }).join('\r\n') + '\r\n';
+    if (!(S.server && S.outDir === S.server.res)) mk.writeOut(S.outDir, 'server.cfg Zeilen.txt', txt).catch(function () {});
+  }
   $('cfgCopy').onclick = function () { if ($('cfg').value) copy($('cfg').value); };
+  // ---------- FiveM-Server ----------
+  if (S.cfgAuto == null) S.cfgAuto = true;
+  if (S.live == null) S.live = true;
+  var B_START = '# --- Melonenport (automatisch, nicht von Hand ändern) ---', B_END = '# --- Melonenport Ende ---';
+  function sepOf(p) { return p.indexOf('\\') >= 0 ? '\\' : '/'; }
+  function dirName(p) { var i = Math.max(p.lastIndexOf('\\'), p.lastIndexOf('/')); return p.slice(0, i); }
+  async function readCfg() { return new TextDecoder('utf-8').decode(await mk.readFile(S.server.cfg)); }
+  function cfgRcon(t) {
+    var pw = (t.match(/^[ \t]*(?:set[ \t]+)?rcon_password[ \t]+"?([^"\s]+)"?/mi) || [])[1];
+    var port = (t.match(/^[ \t]*endpoint_add_udp[ \t]+"?[^"\s]*:(\d+)"?/mi) || [])[1] || '30120';
+    return { pw: pw, port: port };
+  }
+  async function srvUi() {
+    var on = !!S.server;
+    $('srvOpts').style.display = on ? '' : 'none';
+    $('srvPick').textContent = on ? '🖥️ Anderen Server wählen …' : '🖥️ Server verbinden …';
+    $('srvPick').classList.toggle('main', !on);
+    $('optCfgAuto').checked = S.cfgAuto; $('optLive').checked = S.live;
+    if (!on) { $('srvInfo').innerHTML = 'Wähl den Ordner deines Servers (da wo die <b>server.cfg</b> liegt). Danach landen alle Mods direkt dort und werden automatisch eingetragen.'; return; }
+    $('srvInfo').innerHTML = '✅ Verbunden<br>Mods landen in <b>' + esc(S.server.res) + '</b>';
+    try {
+      var r = cfgRcon(await readCfg());
+      $('srvRconSet').style.display = r.pw ? 'none' : '';
+      $('srvLiveInfo').textContent = r.pw ? 'Live-Laden ist bereit (Port ' + r.port + ').' : 'Für Live-Laden fehlt in der server.cfg ein rcon_password. Klick unten, dann einmal den Server neu starten.';
+    } catch (e) { $('srvLiveInfo').textContent = 'server.cfg konnte nicht gelesen werden.'; }
+  }
+  $('optCfgAuto').onchange = function () { S.cfgAuto = this.checked; save(); };
+  $('optLive').onchange = function () { S.live = this.checked; save(); };
+  $('srvOpen').onclick = function () { if (S.server) mk.openFolder(S.server.dir); };
+  $('srvOff').onclick = function () { S.server = null; save(); srvUi(); toast('Server getrennt'); };
+  $('srvPick').onclick = async function () {
+    var d = await mk.pickFolder('Ordner deines FiveM-Servers wählen (mit server.cfg)'); if (!d) return;
+    var cfg = await mk.findCfg(d);
+    if (!cfg) { toast('Keine server.cfg gefunden'); $('srvInfo').innerHTML = '⚠️ In <b>' + esc(d) + '</b> wurde keine <b>server.cfg</b> gefunden. Wähl den Ordner, in dem sie liegt (bei txAdmin z. B. <i>txData/…</i>).'; return; }
+    var dir = dirName(cfg), sp = sepOf(cfg);
+    S.server = { cfg: cfg, dir: dir, res: dir + sp + 'resources' + sp + '[melonenport]' };
+    S.outDir = S.server.res; save(); outUi(); srvUi();
+    hx('server linked: ' + cfg, 'k'); toast('Server verbunden');
+    syncServer([]);
+  };
+  $('srvRconSet').onclick = async function () {
+    try {
+      var t = await readCfg(), nl = t.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
+      if (cfgRcon(t).pw) { srvUi(); return; }
+      await backupCfg(t);
+      var a = new Uint8Array(12); crypto.getRandomValues(a);
+      var pw = Array.from(a, function (b) { return 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]; }).join('');
+      t = t.replace(/\s*$/, '') + nl + nl + '# Für Melonenport Live-Laden' + nl + 'rcon_password "' + pw + '"' + nl;
+      await mk.writeOut(S.server.dir, base(S.server.cfg), t);
+      toast('Eingerichtet – Server einmal neu starten'); srvUi();
+    } catch (e) { toast('Fehler: ' + e.message); }
+  };
+  async function backupCfg(t) {
+    var bak = base(S.server.cfg) + '.melonenport-backup';
+    if (!(await mk.stat(S.server.dir + sepOf(S.server.cfg) + bak))) await mk.writeOut(S.server.dir, bak, t);
+  }
+  // ensure-Block in der server.cfg aktuell halten und neue Mods live laden
+  async function syncServer(newNames) {
+    if (!S.server || S.outDir !== S.server.res) return;
+    try {
+      var st = await mk.stat(S.server.res), names = [];
+      if (st && st.dir) (await mk.scan(S.server.res)).forEach(function (f) { var m = f.rel.match(/^([^/]+)\/\.melonenport$/); if (m) names.push(m[1]); });
+      names.sort();
+      var t = await readCfg(), nl = t.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
+      if (S.cfgAuto) {
+        var rest = t.replace(new RegExp('\\r?\\n?' + B_START.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\\s\\S]*?' + B_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\r?\\n?'), nl);
+        var own = names.filter(function (n) { return !new RegExp('^[ \\t]*(ensure|start)[ \\t]+' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[ \\t]*$', 'mi').test(rest); });
+        var out = rest.replace(/\s*$/, '') + nl;
+        if (own.length) out += nl + B_START + nl + own.map(function (n) { return 'ensure ' + n; }).join(nl) + nl + B_END + nl;
+        if (out !== t) { await backupCfg(t); await mk.writeOut(S.server.dir, base(S.server.cfg), out); hx('server.cfg updated (' + own.length + ' ensure)', 'k'); }
+      }
+      if (S.live && newNames.length) {
+        var r = cfgRcon(t);
+        if (!r.pw) return 'In server.cfg eingetragen – beim nächsten Serverstart dabei';
+        var ok = await mk.rcon(r.port, r.pw, 'refresh');
+        if (!ok.ok) return 'Server läuft gerade nicht – beim nächsten Start dabei';
+        for (var i = 0; i < newNames.length; i++) await mk.rcon(r.port, r.pw, 'ensure ' + newNames[i]);
+        hx('rcon: ensure ' + newNames.join(', '), 'k'); return 'Live auf dem Server geladen – im Spiel einmal neu verbinden';
+      }
+    } catch (e) { return 'server.cfg: ' + (e.message || e); }
+    return S.cfgAuto && newNames.length ? 'In server.cfg eingetragen' : '';
+  }
+  srvUi();
   outUi(); cfgUi();
   if (mk.version) mk.version().then(function (v) { $('ver').textContent = 'v' + v; });
 
@@ -780,8 +884,8 @@ if (typeof module !== 'undefined') module.exports = MP;
       D.innerHTML = '<div id="detailEmpty"><div><div class="big">Fahrzeuge, Flugzeuge &amp; Helis für FiveM</div>' +
         '<ol><li>Link von <b>gta5-mods.com</b> links einfügen oder die heruntergeladene Datei reinziehen</li>' +
         '<li>Melonenport lädt, entpackt und sortiert alles von selbst</li>' +
-        '<li>Rechts einmal den <b>resources</b>-Ordner deines Servers wählen</li>' +
-        '<li>Die <b>ensure</b>-Zeile in die server.cfg kopieren, fertig</li></ol>' +
+        '<li>Rechts einmal einen Ausgabeordner wählen: den <b>resources</b>-Ordner deines Servers oder einfach einen Ordner zum Sammeln, z. B. auf dem Desktop</li>' +
+        '<li>Später die fertigen Ordner auf den Server ziehen und die Zeilen aus <b>server.cfg Zeilen.txt</b> in die server.cfg kopieren</li></ol>' +
         '<div style="margin-top:14px;font-size:12px">Tipp: Strg + V fügt einen kopierten Link direkt ein.</div></div></div>';
       return;
     }
@@ -850,7 +954,9 @@ if (typeof module !== 'undefined') module.exports = MP;
   mk.onDl && mk.onDl(function (d) {
     var it = items.find(function (i) { return i.id === d.id; }); if (!it) return;
     if (d.state === 'page') upd(it, 'Öffne gta5-mods …', null);
-    else if (d.state === 'check') upd(it, 'Bitte im neuen Fenster bestätigen, dass du kein Bot bist', null);
+    else if (d.state === 'dlpage') upd(it, 'Öffne Download-Seite …', null);
+    else if (d.state === 'wait') upd(it, 'Warte auf Download-Start …', null);
+    else if (d.state === 'manual') { upd(it, d.why + ' (Fenster ist aufgegangen)', null); hx('waiting for user action', 'w'); }
     else if (d.state === 'info') { if (d.title) it.title = d.title; if (d.author) it.author = d.author; render(); }
     else if (d.state === 'progress') {
       var p = d.total ? Math.round(d.received / d.total * 100) : null;
@@ -962,8 +1068,8 @@ if (typeof module !== 'undefined') module.exports = MP;
       var o = await mk.prepOut(S.outDir, it.resName);
       hx('build resource ' + o.name); hxBurstSafe(3000);
       await writeMod(it, o.dir, '', false);
-      it.out = o; it.status = 'done'; it.msg = 'Fertig · ensure ' + o.name; addCfg(o.name);
-      log('Fertig: ' + o.name + ' liegt in ' + o.dir); hx('resource ' + o.name + ' ready ✓', 'k'); toast('„' + o.name + '“ ist fertig');
+      it.out = o; it.status = 'done'; it.msg = 'Fertig · ensure ' + o.name; addCfg(o.name); var sm = await syncServer([o.name]);
+      log('Fertig: ' + o.name + ' liegt in ' + o.dir); hx('resource ' + o.name + ' ready ✓', 'k'); toast('„' + o.name + '“ ist fertig' + (sm ? ' · ' + sm : ''));
     } catch (e) { fail(it, e); }
     if (own) running = false;
     render();
@@ -995,7 +1101,7 @@ if (typeof module !== 'undefined') module.exports = MP;
           var p = MP.plan(mods, { author: 'Melonenport', description: 'Fahrzeug-Pack (' + mods.length + ' Mods)', names: S.names });
           for (var k = 0; k < p.files.length; k++) if (/^(fxmanifest\.lua|client\.lua)$/.test(p.files[k].rel)) await mk.writeOut(o.dir, p.files[k].rel, p.files[k].text);
           if (p.warnings.length) native[0].light.warnings = native[0].light.warnings.concat(p.warnings.filter(function (w) { return native[0].light.warnings.indexOf(w) < 0; }));
-          log('Fertig: Pack ' + o.name + ' liegt in ' + o.dir); addCfg(o.name); toast('Pack „' + o.name + '“ ist fertig'); hx('pack ' + o.name + ' ready ✓', 'k');
+          log('Fertig: Pack ' + o.name + ' liegt in ' + o.dir); addCfg(o.name); var sm2 = await syncServer([o.name]); toast('Pack „' + o.name + '“ ist fertig' + (sm2 ? ' · ' + sm2 : '')); hx('pack ' + o.name + ' ready ✓', 'k');
         }
       }
     } finally { convertOne.inner = false; running = false; render(); }

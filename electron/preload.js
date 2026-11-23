@@ -31,6 +31,8 @@ contextBridge.exposeInMainWorld('mk', {
   showItem: (p) => ipcRenderer.invoke('a:showItem', p),
   openUrl: (u) => ipcRenderer.invoke('a:openUrl', u),
   fetchMod: (id, url) => ipcRenderer.invoke('a:fetchMod', id, url),
+  findCfg: (dir) => ipcRenderer.invoke('a:findCfg', dir),
+  rcon: (port, pass, cmd) => ipcRenderer.invoke('a:rcon', port, pass, cmd),
   onDl: (cb) => ipcRenderer.on('a:dl', (e, d) => cb(d)),
   onOpenFiles: (cb) => ipcRenderer.on('a:open', (e, ps) => cb(ps))
 });

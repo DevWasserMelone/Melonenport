@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "date": "2026-11-23",
-  "changelog": "🍉 Melonenport 1.0.2\n\n✨ Neu\n• Im Ausgabeordner liegt jetzt eine „server.cfg Zeilen.txt“ mit allen ensure-Zeilen\n• Mods können in einem Sammelordner gespeichert und später auf den Server gezogen werden"
+  "changelog": "🍉 Melonenport 1.0.3\n\n✨ Neu\n• FiveM-Server verbinden: Mods landen direkt in resources/[melonenport]\n• ensure-Zeilen werden automatisch in die server.cfg eingetragen (mit Sicherung)\n• Live-Laden: neue Fahrzeuge kommen ohne Server-Neustart dazu"
 }
