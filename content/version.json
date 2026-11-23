@@ -1,5 +1,5 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.33",
   "date": "2026-11-23",
-  "changelog": "🍉 Melonenport 1.0.3\n\n✨ Neu\n• FiveM-Server verbinden: Mods landen direkt in resources/[melonenport]\n• ensure-Zeilen werden automatisch in die server.cfg eingetragen (mit Sicherung)\n• Live-Laden: neue Fahrzeuge kommen ohne Server-Neustart dazu"
+  "changelog": ""
 }
