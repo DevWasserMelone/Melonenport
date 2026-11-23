@@ -5,14 +5,14 @@ const fs = require('fs');
 let autoUpdater = null;
 try { autoUpdater = require('electron-updater').autoUpdater; } catch (e) { autoUpdater = null; }
 
-const REPO_DEFAULT = 'DevWasserMelone/Melonenport';
+const REPO_DEFAULT = 'DevWasserMelone/Melonenkonverter';
 const ROOT = path.join(__dirname, '..');
 const ICON = path.join(ROOT, 'build', 'icon.png');
 const USER = app.getPath('userData');
 const CONTENT = path.join(USER, 'content');
 const PUBFILE = path.join(USER, 'publisher.json');
 
-let launcherWin = null, appWin = null, pendingFiles = [];
+let launcherWin = null, appWin = null, watcher = null, pendingFiles = [];
 
 // ---------- Versionen ----------
 function cmp(a, b) {
@@ -42,7 +42,7 @@ function pub() {
 function repo() { return pub().repo; }
 
 async function gh(url, opts = {}) {
-  const headers = Object.assign({ 'User-Agent': 'Melonenport', 'Cache-Control': 'no-cache' }, opts.headers || {});
+  const headers = Object.assign({ 'User-Agent': 'Melonenkonverter', 'Cache-Control': 'no-cache' }, opts.headers || {});
   const res = await net.fetch(url, Object.assign({}, opts, { headers, cache: 'no-store' }));
   return res;
 }
@@ -59,7 +59,7 @@ async function getRemoteFile(file, raw) {
 function openLauncher() {
   launcherWin = new BrowserWindow({
     width: 460, height: 600, resizable: false, maximizable: false, backgroundColor: '#141619', icon: ICON,
-    title: 'Melonenport Launcher', show: false,
+    title: 'Melonenkonverter Launcher', show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false }
   });
   launcherWin.loadFile(path.join(ROOT, 'launcher', 'index.html'));
@@ -71,7 +71,7 @@ function openApp() {
   const c = current();
   appWin = new BrowserWindow({
     width: 1280, height: 800, minWidth: 980, minHeight: 600, backgroundColor: '#141619', icon: ICON,
-    title: 'Melonenport', show: false,
+    title: 'Melonenkonverter', show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false }
   });
   appWin.loadFile(c.file);
@@ -79,12 +79,12 @@ function openApp() {
   appWin.webContents.on('did-finish-load', () => {
     if (pendingFiles.length) { appWin.webContents.send('a:open', pendingFiles); pendingFiles = []; }
   });
-  appWin.on('closed', () => { appWin = null; });
+  appWin.on('closed', () => { appWin = null; stopWatch(); });
   if (launcherWin) launcherWin.close();
 }
 
-function modArgs(argv) {
-  return argv.slice(1).filter(a => /\.(zip|rar|7z|oiv|rpf)$/i.test(a) && fs.existsSync(a));
+function p3dArgs(argv) {
+  return argv.slice(1).filter(a => /\.p3d$/i.test(a) && fs.existsSync(a));
 }
 
 // ---------- Start ----------
@@ -92,7 +92,7 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', (e, argv) => {
-    const files = modArgs(argv);
+    const files = p3dArgs(argv);
     if (appWin) {
       if (files.length) appWin.webContents.send('a:open', files);
       if (appWin.isMinimized()) appWin.restore();
@@ -103,7 +103,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     Menu.setApplicationMenu(null);
-    const files = modArgs(process.argv);
+    const files = p3dArgs(process.argv);
     if (files.length) { pendingFiles = files; openApp(); } else openLauncher();
     setupUpdater();
   });
@@ -202,217 +202,150 @@ ipcMain.handle('l:publish', async (e, d) => {
   return version;
 });
 
-
-// ---------- Programm (Melonenport) ----------
-const os = require('os');
-const crypto = require('crypto');
-const { execFile } = require('child_process');
-const { session } = require('electron');
-const TMP = path.join(os.tmpdir(), 'Melonenport');
-const MARKER = '.melonenport';
-
+// ---------- Programm (Konverter) ----------
+ipcMain.handle('a:version', () => current().version);
+ipcMain.handle('a:pickFiles', async () => {
+  const r = await dialog.showOpenDialog(appWin, { title: 'Dateien wählen', filters: [{ name: 'Modelle, Texturen und Archive', extensions: ['p3d', 'xob', 'obj', 'mtl', 'paa', 'pac', 'edds', 'emat', 'png', 'jpg', 'pbo', 'pak', 'zip'] }], properties: ['openFile', 'multiSelections'] });
+  return r.canceled ? [] : r.filePaths;
+});
+ipcMain.handle('a:pickFolder', async () => {
+  const r = await dialog.showOpenDialog(appWin, { title: 'Ordner wählen', properties: ['openDirectory', 'createDirectory'] });
+  return r.canceled ? null : r.filePaths[0];
+});
 function fsMsg(err, what) {
   const c = err && err.code;
   if (c === 'ENOENT') return what + ': Datei oder Ordner nicht gefunden.';
-  if (c === 'EACCES' || c === 'EPERM') return what + ': Keine Berechtigung. Wähle rechts einen anderen Ausgabeordner.';
-  if (c === 'EBUSY') return what + ': Die Datei ist gerade in einem anderen Programm geöffnet (z. B. läuft der Server noch). Schließ es und versuch es nochmal.';
+  if (c === 'EACCES' || c === 'EPERM') return what + ': Keine Berechtigung. Wähle rechts einen anderen Speicherort (z. B. „Eigener Ordner“).';
+  if (c === 'EBUSY') return what + ': Die Datei ist gerade in einem anderen Programm geöffnet (z. B. Blender). Schließ sie dort und versuch es nochmal.';
   if (c === 'ENOSPC') return what + ': Die Festplatte ist voll.';
   if (c === 'EROFS') return what + ': Der Ordner ist schreibgeschützt.';
   return what + ': ' + (err && err.message || err);
 }
-function safeRel(rel) {
-  const parts = String(rel).replace(/\\/g, '/').split('/').filter(p => p && p !== '.' && p !== '..');
-  if (!parts.length) throw new Error('Ungültiger Dateiname');
-  return parts.map(p => p.replace(/[<>:"|?*\x00-\x1f]/g, '_')).join(path.sep);
-}
-function inside(root, rel) {
-  const full = path.resolve(root, safeRel(rel));
-  if (!full.startsWith(path.resolve(root) + path.sep)) throw new Error('Ungültiger Pfad');
-  return full;
-}
-
-app.on('will-quit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
-
-ipcMain.handle('a:version', () => current().version);
-ipcMain.handle('a:pickFiles', async () => {
-  const r = await dialog.showOpenDialog(appWin, { title: 'Mods wählen', filters: [{ name: 'Mods (ZIP, RAR, 7Z, OIV, RPF)', extensions: ['zip', 'rar', '7z', 'oiv', 'rpf'] }, { name: 'Alle Dateien', extensions: ['*'] }], properties: ['openFile', 'multiSelections'] });
-  return r.canceled ? [] : r.filePaths;
-});
-ipcMain.handle('a:pickFolder', async (e, title) => {
-  const r = await dialog.showOpenDialog(appWin, { title: title || 'Ordner wählen', properties: ['openDirectory', 'createDirectory'] });
-  return r.canceled ? null : r.filePaths[0];
-});
-ipcMain.handle('a:stat', (e, p) => {
-  try { const s = fs.statSync(p); return { dir: s.isDirectory(), size: s.size }; } catch (err) { return null; }
+// große Dateien stückweise lesen (kein Größenlimit)
+ipcMain.handle('a:fileSize', (e, p) => { try { return fs.statSync(p).size; } catch (err) { throw new Error(fsMsg(err, 'Lesen fehlgeschlagen')); } });
+ipcMain.handle('a:readRange', (e, p, off, len) => {
+  let fd;
+  try {
+    fd = fs.openSync(p, 'r');
+    const buf = Buffer.alloc(len);
+    const n = fs.readSync(fd, buf, 0, len, off);
+    return new Uint8Array(buf.buffer, buf.byteOffset, n);
+  } catch (err) { throw new Error(fsMsg(err, 'Lesen fehlgeschlagen')); }
+  finally { if (fd !== undefined) try { fs.closeSync(fd); } catch (x) {} }
 });
 ipcMain.handle('a:read', (e, p) => {
   try { return new Uint8Array(fs.readFileSync(p)); } catch (err) { throw new Error(fsMsg(err, 'Lesen fehlgeschlagen')); }
 });
-ipcMain.handle('a:scan', (e, dir) => {
-  const out = [];
-  (function walk(d, rel, depth) {
-    if (depth > 12 || out.length > 20000) return;
+ipcMain.handle('a:write', (e, dir, files) => {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    for (const f of files) {
+      const name = path.basename(f.name);
+      fs.writeFileSync(path.join(dir, name), typeof f.data === 'string' ? f.data : Buffer.from(f.data));
+    }
+  } catch (err) { throw new Error(fsMsg(err, 'Speichern fehlgeschlagen')); }
+  return true;
+});
+ipcMain.handle('a:openFolder', (e, dir) => shell.openPath(dir));
+ipcMain.handle('a:bridgeDir', () => {
+  const d = path.join(app.getPath('home'), 'Melonenkonverter-Blender');
+  try { fs.mkdirSync(d, { recursive: true }); } catch (e) {}
+  return d;
+});
+ipcMain.handle('a:showItem', (e, p) => shell.showItemInFolder(p));
+// KI-Anfrage über das Programm schicken (kein Browser-CORS, Proxy-Einstellungen von Windows)
+// kostenlose Online-Bild-KI (ohne Konto)
+ipcMain.handle('a:httpGetImage', async (e, url) => {
+  if (!/^https:\/\/(image|gen)\.pollinations\.ai\//.test(url)) throw new Error('Ungültige Adresse');
+  const res = await net.fetch(url, { headers: { 'User-Agent': 'Melonenkonverter' } });
+  const buf = Buffer.from(await res.arrayBuffer());
+  return { status: res.status, ok: res.ok, type: res.headers.get('content-type') || '', data: buf.toString('base64') };
+});
+// lokale Bild-KI (Stable Diffusion WebUI / Forge mit --api) auf diesem PC
+ipcMain.handle('a:localSD', async (e, base, body) => {
+  if (!/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(base)) throw new Error('Nur lokale Adressen erlaubt');
+  let res;
+  try { res = await net.fetch(base + '/sdapi/v1/txt2img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }); }
+  catch (x) { return { status: 0, ok: false, json: null }; }
+  const text = await res.text(); let json = null; try { json = JSON.parse(text); } catch (x) {}
+  return { status: res.status, ok: res.ok, json };
+});
+ipcMain.handle('a:aiRequest', async (e, url, key, body) => {
+  if (!/^https:\/\/generativelanguage\.googleapis\.com\//.test(url)) throw new Error('Ungültige Adresse');
+  const res = await net.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body });
+  const text = await res.text();
+  let json = null; try { json = JSON.parse(text); } catch (x) {}
+  return { status: res.status, ok: res.ok, json };
+});
+
+function searchByName(dir, name, depth, budget) {
+  if (depth < 0 || budget.n <= 0) return null;
+  let list;
+  try { list = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return null; }
+  for (const d of list) { budget.n--; if (d.isFile() && d.name.toLowerCase() === name) return path.join(dir, d.name); }
+  for (const d of list) {
+    if (d.isDirectory() && !d.name.startsWith('.') && !/^(node_modules|\$recycle\.bin|windows)$/i.test(d.name)) {
+      const r = searchByName(path.join(dir, d.name), name, depth - 1, budget); if (r) return r;
+    }
+  }
+  return null;
+}
+ipcMain.handle('a:findTex', (e, p3d, tex) => {
+  const rel = String(tex).replace(/\\/g, '/').replace(/^\/+/, '');
+  const name = path.basename(rel).toLowerCase();
+  let dir = path.dirname(p3d);
+  const tries = [];
+  for (let i = 0; i < 8; i++) {
+    tries.push(path.join(dir, rel));
+    const up = path.dirname(dir); if (up === dir) break; dir = up;
+  }
+  if (process.platform === 'win32') tries.push(path.join('P:\\', rel));
+  for (const t of tries) { try { if (fs.statSync(t).isFile()) return t; } catch (x) {} }
+  const here = path.dirname(p3d);
+  return searchByName(here, name, 3, { n: 20000 }) || searchByName(path.dirname(here), name, 3, { n: 20000 });
+});
+
+// Texturen rund um ein Modell auflisten (für automatische Suche und Textur-Browser)
+ipcMain.handle('a:listTex', (e, file, levels) => {
+  const exts = /\.(paa|pac|png|jpe?g|bmp|webp)$/i, out = [], seen = new Set();
+  let dir = path.dirname(file), budget = { n: 30000 };
+  const roots = [];
+  for (let i = 0; i <= (levels == null ? 2 : levels); i++) { roots.push(dir); const up = path.dirname(dir); if (up === dir) break; dir = up; }
+  function walk(d, depth) {
+    if (depth < 0 || budget.n <= 0 || out.length >= 4000) return;
     let list; try { list = fs.readdirSync(d, { withFileTypes: true }); } catch (x) { return; }
     for (const it of list) {
-      const full = path.join(d, it.name), r = rel ? rel + '/' + it.name : it.name;
-      if (it.isDirectory()) { if (!/^(__macosx|\.git)$/i.test(it.name)) walk(full, r, depth + 1); }
-      else if (it.isFile()) { let size = 0; try { size = fs.statSync(full).size; } catch (x) {} out.push({ path: full, rel: r, size }); }
+      budget.n--;
+      const full = path.join(d, it.name);
+      if (it.isFile() && exts.test(it.name) && !seen.has(full.toLowerCase())) { seen.add(full.toLowerCase()); out.push(full); }
     }
-  })(dir, '', 0);
+    for (const it of list) if (it.isDirectory() && !it.name.startsWith('.') && !/^(node_modules|\$recycle\.bin|windows|program files.*|appdata)$/i.test(it.name)) walk(path.join(d, it.name), depth - 1);
+  }
+  // erst nah am Modell, dann weiter oben (flacher)
+  roots.forEach((r, i) => walk(r, 4 - i));
   return out;
 });
 
-// Archive entpacken (ZIP/7Z/OIV über 7-Zip, RAR über unrar)
-function sevenZip() {
-  const p = require('7zip-bin').path7za;
-  return p.replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
-}
-ipcMain.handle('a:extract', async (e, file) => {
-  const id = crypto.createHash('md5').update(file + Date.now() + Math.random()).digest('hex').slice(0, 10);
-  const dir = path.join(TMP, 'x_' + id);
-  fs.mkdirSync(dir, { recursive: true });
-  const head = Buffer.alloc(8); try { const fd = fs.openSync(file, 'r'); fs.readSync(fd, head, 0, 8, 0); fs.closeSync(fd); } catch (err) { throw new Error(fsMsg(err, 'Lesen fehlgeschlagen')); }
-  const isRar = head.toString('latin1', 0, 4) === 'Rar!';
-  if (isRar) {
-    const { createExtractorFromData } = require('node-unrar-js');
-    const data = fs.readFileSync(file);
-    const ex = await createExtractorFromData({ data: data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) });
-    const { files } = ex.extract();
-    for (const f of files) {
-      if (f.fileHeader.flags.directory || !f.extraction) continue;
-      const full = inside(dir, f.fileHeader.name);
-      fs.mkdirSync(path.dirname(full), { recursive: true });
-      fs.writeFileSync(full, Buffer.from(f.extraction));
-    }
-    return dir;
-  }
-  await new Promise((res, rej) => {
-    execFile(sevenZip(), ['x', '-y', '-bd', '-o' + dir, file], { windowsHide: true, maxBuffer: 64 * 1024 * 1024 }, (err, so, se) => {
-      if (err) rej(new Error('Entpacken fehlgeschlagen. Ist das Archiv beschädigt oder mit Passwort geschützt?'));
-      else res();
+// ---------- Ordner überwachen ----------
+function stopWatch() { if (watcher) { try { watcher.close(); } catch (e) {} watcher = null; } }
+ipcMain.handle('a:watch', (e, dir) => {
+  stopWatch();
+  if (!dir || !fs.existsSync(dir)) return false;
+  const timers = new Map(), last = new Map();
+  try {
+    watcher = fs.watch(dir, { recursive: true }, (ev, fn) => {
+      if (!fn || !/\.(p3d|paa|pac)$/i.test(fn)) return;
+      const full = path.join(dir, fn);
+      clearTimeout(timers.get(full));
+      timers.set(full, setTimeout(function check(prevSize) {
+        let st; try { st = fs.statSync(full); } catch (x) { return; }
+        if (prevSize !== st.size) { timers.set(full, setTimeout(() => check(st.size), 700)); return; }
+        if (last.get(full) === st.mtimeMs) return;
+        last.set(full, st.mtimeMs);
+        if (appWin) appWin.webContents.send('a:watched', full);
+      }, 700));
     });
-  });
-  return dir;
+  } catch (err) { return false; }
+  return true;
 });
-
-// Ausgabe
-ipcMain.handle('a:prepOut', (e, root, name) => {
-  try {
-    fs.mkdirSync(root, { recursive: true });
-    let final = name, n = 2;
-    while (fs.existsSync(path.join(root, final))) {
-      const dir = path.join(root, final);
-      if (fs.existsSync(path.join(dir, MARKER))) { fs.rmSync(dir, { recursive: true, force: true }); break; }
-      final = name + '_' + n++;
-    }
-    const dir = path.join(root, final);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, MARKER), 'Von Melonenport erstellt. Beim nächsten Umwandeln mit gleichem Namen wird dieser Ordner ersetzt.\n');
-    return { name: final, dir };
-  } catch (err) { throw new Error(fsMsg(err, 'Ausgabeordner')); }
-});
-ipcMain.handle('a:writeOut', (e, dir, rel, data) => {
-  try {
-    const full = inside(dir, rel);
-    fs.mkdirSync(path.dirname(full), { recursive: true });
-    fs.writeFileSync(full, typeof data === 'string' ? data : Buffer.from(data));
-    return true;
-  } catch (err) { throw new Error(fsMsg(err, 'Speichern fehlgeschlagen')); }
-});
-ipcMain.handle('a:copyOut', (e, dir, rel, src) => {
-  try {
-    const full = inside(dir, rel);
-    fs.mkdirSync(path.dirname(full), { recursive: true });
-    fs.copyFileSync(src, full);
-    return true;
-  } catch (err) { throw new Error(fsMsg(err, 'Kopieren fehlgeschlagen')); }
-});
-ipcMain.handle('a:openFolder', (e, dir) => shell.openPath(dir));
-ipcMain.handle('a:showItem', (e, p) => shell.showItemInFolder(p));
-ipcMain.handle('a:openUrl', (e, url) => { if (/^https:\/\//.test(url)) shell.openExternal(url); });
-
-// ---------- Mods von gta5-mods.com laden ----------
-const PART = 'persist:gta5mods';
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-const PAGE_JS = `(()=>{
-  const links=[...document.querySelectorAll('a[href]')].map(a=>a.href);
-  const h=document.querySelector('h1');
-  const au=document.querySelector('.file-author a, .user-name a, a.username, .file-uploader a, a[href*="/users/"]');
-  return { title:(h?h.textContent:document.title).replace(/\\s+/g,' ').trim(), author:au?au.textContent.trim():'',
-    dl:links.find(x=>/\\/download\\/\\d+/.test(x))||'', direct:links.find(x=>/files\\.gta5-mods\\.com\\/uploads\\//.test(x))||'',
-    cf:/just a moment|einen moment|checking your browser|attention required/i.test(document.title)||!!document.querySelector('#challenge-form,#cf-challenge-running,.cf-turnstile') };
-})()`;
-
-function sendDl(id, d) { if (appWin) appWin.webContents.send('a:dl', Object.assign({ id }, d)); }
-
-async function pagePoll(win, id, want, timeout) {
-  const t0 = Date.now(); let shown = false, last = null;
-  while (Date.now() - t0 < timeout) {
-    if (win.isDestroyed()) throw new Error('Fenster wurde geschlossen.');
-    try { last = await win.webContents.executeJavaScript(PAGE_JS); } catch (e) { last = null; }
-    if (last && !last.cf && want(last)) return last;
-    if (last && last.cf && !shown && Date.now() - t0 > 6000) {
-      shown = true; win.setTitle('Bitte kurz bestätigen, dass du kein Bot bist'); win.show();
-      sendDl(id, { state: 'check' });
-    }
-    await sleep(500);
-  }
-  return last;
-}
-
-ipcMain.handle('a:fetchMod', async (e, id, url) => {
-  url = String(url || '').trim();
-  if (!/^https?:\/\//i.test(url)) throw new Error('Das ist kein Link.');
-  const dlDir = path.join(TMP, 'dl_' + id); fs.mkdirSync(dlDir, { recursive: true });
-  const ses = session.fromPartition(PART);
-  const win = new BrowserWindow({ show: false, width: 1100, height: 780, icon: ICON, autoHideMenuBar: true, webPreferences: { partition: PART, contextIsolation: true, sandbox: true } });
-  let started = false, info = { title: '', author: '', page: '' };
-  const done = new Promise((resolve, reject) => {
-    const onDl = (ev, item) => {
-      if (started) { item.cancel(); return; }
-      started = true;
-      const file = path.join(dlDir, path.basename(item.getFilename() || 'mod.zip'));
-      item.setSavePath(file);
-      if (!win.isDestroyed()) win.hide();
-      item.on('updated', () => sendDl(id, { state: 'progress', received: item.getReceivedBytes(), total: item.getTotalBytes() }));
-      item.once('done', (ev2, state) => {
-        ses.removeListener('will-download', onDl);
-        if (state === 'completed') resolve(file); else reject(new Error('Download abgebrochen.'));
-      });
-    };
-    ses.on('will-download', onDl);
-    win.on('closed', () => { if (!started) { ses.removeListener('will-download', onDl); reject(new Error('Download abgebrochen.')); } });
-  });
-  done.catch(() => {});
-  try {
-    const direct = /files\.gta5-mods\.com\//i.test(url) || /\.(zip|rar|7z|oiv|rpf)(\?|$)/i.test(url);
-    if (direct) {
-      win.webContents.downloadURL(url);
-    } else {
-      if (!/gta5-mods\.com\//i.test(url)) throw new Error('Nur Links von gta5-mods.com oder direkte Datei-Links gehen.');
-      sendDl(id, { state: 'page' });
-      win.loadURL(url).catch(() => {});
-      const p = await pagePoll(win, id, x => x.dl || x.direct, 120000);
-      if (!p || (!p.dl && !p.direct)) throw new Error('Auf der Seite wurde kein Download gefunden.');
-      info = { title: p.title, author: p.author, page: url };
-      sendDl(id, { state: 'info', title: p.title, author: p.author });
-      if (p.direct) win.webContents.downloadURL(p.direct);
-      else {
-        win.loadURL(p.dl).catch(() => {});
-        const t0 = Date.now();
-        while (!started && Date.now() - t0 < 120000) {
-          const q = await pagePoll(win, id, x => x.direct, 4000);
-          if (started) break;
-          if (q && q.direct) { win.webContents.downloadURL(q.direct); break; }
-        }
-      }
-    }
-    const t0 = Date.now();
-    while (!started && Date.now() - t0 < 60000) await sleep(300);
-    if (!started) throw new Error('Der Download ist nicht gestartet. Probier den direkten Download-Link.');
-    const file = await done;
-    return Object.assign({ file }, info);
-  } finally {
-    if (!win.isDestroyed()) win.destroy();
-  }
-});
+ipcMain.handle('a:unwatch', () => { stopWatch(); return true; });

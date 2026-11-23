@@ -1,8 +1,8 @@
 {
-  "name": "melonenport",
-  "productName": "Melonenport",
-  "version": "1.0.0",
-  "description": "Wandelt GTA5-Mods-Fahrzeuge und Flugzeuge in FiveM-Resources um",
+  "name": "melonenkonverter",
+  "productName": "Melonenkonverter",
+  "version": "1.0.8",
+  "description": "Wandelt P3D-Modelle in OBJ-Dateien um",
   "author": "DevWasserMelone",
   "main": "electron/main.js",
   "scripts": {
@@ -10,28 +10,25 @@
     "release": "electron-builder --win --publish always"
   },
   "dependencies": {
-    "7zip-bin": "^5.2.0",
-    "electron-updater": "^6.3.9",
-    "node-unrar-js": "^2.0.2"
+    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "de.devwassermelone.melonenport",
-    "productName": "Melonenport",
-    "artifactName": "Melonenport-Setup-${version}.${ext}",
+    "appId": "de.devwassermelone.melonenkonverter",
+    "productName": "Melonenkonverter",
+    "artifactName": "Melonenkonverter-Setup-${version}.${ext}",
     "files": ["electron/**", "launcher/**", "app/**", "build/icon.png", "package.json"],
-    "asarUnpack": ["node_modules/7zip-bin/**", "node_modules/node-unrar-js/**"],
     "directories": { "buildResources": "build", "output": "dist" },
     "win": { "target": "nsis", "icon": "build/icon.png" },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "Melonenport"
+      "shortcutName": "Melonenkonverter"
     },
-    "publish": [{ "provider": "github", "owner": "DevWasserMelone", "repo": "Melonenport", "releaseType": "release" }]
+    "publish": [{ "provider": "github", "owner": "DevWasserMelone", "repo": "Melonenkonverter", "releaseType": "release" }]
   }
 }
