@@ -130,7 +130,7 @@ body.hacker .res code{background:#03110a;color:var(--green)}
       <div class="row">
         <label class="t">Ausgabeordner</label>
         <button class="btn" id="outPick" style="width:100%">📁 Ordner wählen …</button>
-        <div class="path" id="outPath">Noch keiner gewählt. Am besten direkt den <b>resources</b>-Ordner deines Servers, z. B. <i>resources/[fahrzeuge]</i>.</div>
+        <div class="path" id="outPath">Noch keiner gewählt. Entweder der <b>resources</b>-Ordner deines Servers oder ein Sammelordner, z. B. „FiveM Fahrzeuge“ auf dem Desktop. Den ziehst du später einfach auf den Server.</div>
         <button class="btn sm" id="outOpen" style="margin-top:6px;display:none">Ordner öffnen</button>
       </div>
       <div class="row">
@@ -730,7 +730,15 @@ if (typeof module !== 'undefined') module.exports = MP;
   $('outPick').onclick = async function () { var d = await mk.pickFolder('Ausgabeordner wählen (z. B. resources deines Servers)'); if (d) { S.outDir = d; save(); outUi(); } };
   $('outOpen').onclick = function () { if (S.outDir) mk.openFolder(S.outDir); };
   function cfgUi() { $('cfg').value = S.cfg.map(function (n) { return 'ensure ' + n; }).join('\n'); }
-  function addCfg(n) { if (S.cfg.indexOf(n) < 0) { S.cfg.push(n); if (S.cfg.length > 200) S.cfg.shift(); save(); } cfgUi(); }
+  function addCfg(n) {
+    if (S.cfg.indexOf(n) < 0) { S.cfg.push(n); if (S.cfg.length > 200) S.cfg.shift(); }
+    S.byDir = S.byDir || {}; var l = S.byDir[S.outDir] = S.byDir[S.outDir] || [];
+    if (l.indexOf(n) < 0) l.push(n);
+    save(); cfgUi();
+    // Merkzettel im Ausgabeordner, damit die Zeilen später beim Server-Einrichten da sind
+    var txt = '# Diese Zeilen in die server.cfg deines FiveM-Servers kopieren\r\n# (die Ordner daneben vorher in den resources-Ordner vom Server ziehen)\r\n\r\n' + l.map(function (x) { return 'ensure ' + x; }).join('\r\n') + '\r\n';
+    mk.writeOut(S.outDir, 'server.cfg Zeilen.txt', txt).catch(function () {});
+  }
   $('cfgCopy').onclick = function () { if ($('cfg').value) copy($('cfg').value); };
   outUi(); cfgUi();
   if (mk.version) mk.version().then(function (v) { $('ver').textContent = 'v' + v; });
@@ -780,8 +788,8 @@ if (typeof module !== 'undefined') module.exports = MP;
       D.innerHTML = '<div id="detailEmpty"><div><div class="big">Fahrzeuge, Flugzeuge &amp; Helis für FiveM</div>' +
         '<ol><li>Link von <b>gta5-mods.com</b> links einfügen oder die heruntergeladene Datei reinziehen</li>' +
         '<li>Melonenport lädt, entpackt und sortiert alles von selbst</li>' +
-        '<li>Rechts einmal den <b>resources</b>-Ordner deines Servers wählen</li>' +
-        '<li>Die <b>ensure</b>-Zeile in die server.cfg kopieren, fertig</li></ol>' +
+        '<li>Rechts einmal einen Ausgabeordner wählen: den <b>resources</b>-Ordner deines Servers oder einfach einen Ordner zum Sammeln, z. B. auf dem Desktop</li>' +
+        '<li>Später die fertigen Ordner auf den Server ziehen und die Zeilen aus <b>server.cfg Zeilen.txt</b> in die server.cfg kopieren</li></ol>' +
         '<div style="margin-top:14px;font-size:12px">Tipp: Strg + V fügt einen kopierten Link direkt ein.</div></div></div>';
       return;
     }
@@ -850,7 +858,9 @@ if (typeof module !== 'undefined') module.exports = MP;
   mk.onDl && mk.onDl(function (d) {
     var it = items.find(function (i) { return i.id === d.id; }); if (!it) return;
     if (d.state === 'page') upd(it, 'Öffne gta5-mods …', null);
-    else if (d.state === 'check') upd(it, 'Bitte im neuen Fenster bestätigen, dass du kein Bot bist', null);
+    else if (d.state === 'dlpage') upd(it, 'Öffne Download-Seite …', null);
+    else if (d.state === 'wait') upd(it, 'Warte auf Download-Start …', null);
+    else if (d.state === 'manual') { upd(it, d.why + ' (Fenster ist aufgegangen)', null); hx('waiting for user action', 'w'); }
     else if (d.state === 'info') { if (d.title) it.title = d.title; if (d.author) it.author = d.author; render(); }
     else if (d.state === 'progress') {
       var p = d.total ? Math.round(d.received / d.total * 100) : null;
