@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Melonenport Launcher</title>
+<style>
+:root{--bg:#0e1520;--panel:#141d29;--panel2:#1b2633;--line:#243243;--text:#e7e9ec;--dim:#8c939d;--green:#46b562;--red:#ef5b5b;--yellow:#e8b84a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.45 "Segoe UI",system-ui,sans-serif;user-select:none;overflow:hidden}
+button,input,textarea{font:inherit;color:inherit}
+.wrap{height:100%;display:flex;flex-direction:column;padding:44px 26px 18px;position:relative}
+.top{display:flex;align-items:center;gap:14px}
+.top h1{margin:0;font-size:20px;font-weight:600}
+.top .sub{color:var(--dim);font-size:12px}
+.card{margin-top:22px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.status{display:flex;align-items:center;gap:9px;font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--dim);flex:none}
+.dot.ok{background:var(--green)} .dot.up{background:var(--yellow)} .dot.err{background:var(--red)}
+.vers{display:flex;align-items:center;gap:18px;margin-top:12px;color:var(--dim);font-size:12px}
+.vers b{color:var(--text);font-weight:600}
+.log{margin-top:18px;flex:1;min-height:0;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;white-space:pre-wrap;font-size:12.5px;color:#c9cdd3;user-select:text}
+.log:empty::before{content:"Keine Neuigkeiten.";color:var(--dim)}
+.big{margin-top:20px;width:100%;height:48px;border:0;border-radius:8px;background:var(--green);color:#0d1a10;font-weight:700;font-size:15px;letter-spacing:.08em;cursor:pointer}
+.big:hover{background:#52c46e} .big:disabled{opacity:.5;cursor:default}
+.big.up{background:var(--yellow);color:#1f1806}
+.bar{height:4px;border-radius:2px;background:var(--panel2);margin-top:10px;overflow:hidden;display:none}
+.bar i{display:block;height:100%;width:0;background:var(--yellow);transition:width .2s}
+.prog{margin-top:12px;padding:10px 12px;border-radius:8px;background:rgba(232,184,74,.08);border:1px solid rgba(232,184,74,.3);display:none;align-items:center;gap:10px;font-size:12.5px}
+.prog span{flex:1}
+.btn{white-space:nowrap;border:1px solid var(--line);background:var(--panel2);padding:6px 12px;border-radius:6px;cursor:pointer}
+.btn:hover{border-color:#4a525d}
+.btn.g{background:var(--green);border-color:var(--green);color:#0d1a10;font-weight:600}
+.pubBtn{display:none;padding:3px 10px;font-size:12px;color:var(--text)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:100}
+.modal.on{display:flex}
+.box{width:400px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.box h2{margin:0 0 12px;font-size:15px;font-weight:600}
+.box label{display:block;color:#c3c8ce;margin:10px 0 4px}
+.box input,.box textarea{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:7px 9px;outline:none}
+.box input:focus,.box textarea:focus{border-color:var(--green)}
+.box textarea{height:130px;resize:none}
+.box .hint{color:var(--dim);font-size:11.5px;margin-top:4px}
+.box .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.box .msg{font-size:12px;margin-top:10px;min-height:16px}
+.msg.err{color:var(--red)} .msg.ok{color:var(--green)}
+.file{display:flex;gap:8px;align-items:center}
+.file span{flex:1;color:var(--dim);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap" data-lights>
+  <div class="top">
+    <span style="position:relative;display:inline-flex"><svg class="hat" width="34" height="29" style="left:-8px;top:-17px;transform:rotate(-18deg);z-index:2"><use href="#santahat"/></svg><svg width="46" height="46" viewBox="0 0 24 24"><path d="M2 8a10 10 0 0 0 20 0z" fill="#46b562"/><path d="M4.2 8a7.8 7.8 0 0 0 15.6 0z" fill="#f2f0e6"/><path d="M5.3 8a6.7 6.7 0 0 0 13.4 0z" fill="#ef5b5b"/><circle cx="9" cy="10.5" r=".8" fill="#222"/><circle cx="12" cy="12.3" r=".8" fill="#222"/><circle cx="15" cy="10.5" r=".8" fill="#222"/></svg></span>
+    <div><h1 class="glitch">Melonenport</h1><div class="sub">GTA5-Mods zu FiveM<span class="xonly"> · Frohe Weihnachten</span></div></div>
+  </div>
+  <div class="card snowcap">
+    <div class="status"><span class="dot" id="dot"></span><span id="status">Suche nach Updates …</span></div>
+    <div class="vers"><span>Version <b id="vContent">–</b></span><span>Programm <b id="vProg">–</b></span><span style="flex:1"></span><button class="btn pubBtn" id="pubBtn">🚀 Veröffentlichen</button></div>
+    <div class="bar" id="bar"><i></i></div>
+    <div class="prog" id="prog"><span id="progTxt"></span><button class="btn" id="progBtn"></button></div>
+  </div>
+  <div class="log snowcap" id="log"></div>
+  <button class="big snowcap" id="go" disabled>STARTEN</button>
+  <div id="term"></div>
+</div>
+
+<style>
+body.hacker .card,body.hacker .log{background:rgba(4,14,8,.88);border-color:var(--line)}
+body.hacker .top h1{font-size:17px}
+body.hacker .top h1::before{display:none}
+body:not(.xmas) .xonly{display:none}
+body.hacker .pubBtn{letter-spacing:.02em}
+body.hacker .top .sub{color:var(--dim)}
+body.hacker .big{background:rgba(0,255,102,.14);border:1px solid #00ff66;color:#00ff66;text-shadow:0 0 8px rgba(0,255,102,.8);letter-spacing:.2em}
+body.hacker .big:hover{background:rgba(0,255,102,.25)}
+body.hacker .big.up{background:rgba(215,255,59,.12);border-color:#d7ff3b;color:#d7ff3b}
+body.hacker .vers b{color:#00ff66}
+body.hacker .box{background:#04100a;border-color:var(--line)}
+body.hacker .box input,body.hacker .box textarea{background:#03110a;border-color:var(--line)}
+body.hacker #term{height:96px;margin:14px -26px -18px;padding:6px 14px;font-size:10.5px}
+body.hacker .wrap{z-index:1}
+</style>
+<div class="modal" id="mSet"><div class="box">
+  <h2>Veröffentlichen einrichten</h2>
+  <label>Repository</label><input id="sRepo" placeholder="DevWasserMelone/Melonenport">
+  <label>Token</label><input id="sTok" type="password" placeholder="github_pat_…">
+  <div class="hint" id="sHint"></div>
+  <div class="msg" id="sMsg"></div>
+  <div class="row"><button class="btn" id="sDel">Token entfernen</button><span style="flex:1"></span><button class="btn" id="sClose">Abbrechen</button><button class="btn g" id="sSave">Speichern</button></div>
+</div></div>
+
+<div class="modal" id="mPub"><div class="box">
+  <h2>Update veröffentlichen</h2>
+  <label>Neue Datei</label>
+  <div class="file"><span id="pFile">Keine Datei gewählt</span><button class="btn" id="pPick">Wählen …</button></div>
+  <label>Version</label><input id="pVer" placeholder="1.0.1">
+  <label>Was ist neu?</label><textarea id="pLog" placeholder="Steht später bei allen im Launcher"></textarea>
+  <div class="msg" id="pMsg"></div>
+  <div class="row"><button class="btn" id="pClose">Abbrechen</button><button class="btn g" id="pGo">Veröffentlichen</button></div>
+</div></div>
+
+<style id="hacker-style">
+body.hacker{--bg:#020604;--panel:rgba(4,14,8,.86);--panel2:rgba(8,26,14,.9);--line:#0e3b1d;--text:#b9ffd0;--dim:#3c9e5a;--green:#00ff66;--red:#ff3b5c;--yellow:#d7ff3b;
+  background:#020604;font-family:Consolas,"Cascadia Mono","Lucida Console",monospace;letter-spacing:.01em}
+body.hacker *{font-family:inherit}
+body.hacker header,body.hacker footer,body.hacker .viewbar{background:var(--panel)}
+body.hacker main,body.hacker header,body.hacker footer{position:relative;z-index:1}
+body.hacker h1{color:var(--green);text-shadow:0 0 8px rgba(0,255,102,.7);text-transform:uppercase;letter-spacing:.12em;font-size:14px}
+body.hacker h1::after{content:"_";animation:blink 1s steps(1) infinite;margin-left:2px}
+body.hacker h1::before{content:"root@melone:~# ";color:var(--dim);text-shadow:none;letter-spacing:0;font-weight:400;text-transform:none}
+@keyframes blink{50%{opacity:0}}
+body.hacker .btn{background:transparent;border-color:var(--line);color:var(--green);text-transform:uppercase;letter-spacing:.08em;font-size:12px}
+body.hacker .btn:hover{border-color:var(--green);box-shadow:0 0 10px rgba(0,255,102,.35) inset}
+body.hacker .btn.main{background:rgba(0,255,102,.12);border-color:var(--green);color:var(--green);text-shadow:0 0 6px rgba(0,255,102,.8)}
+body.hacker .btn.main:hover{background:rgba(0,255,102,.22)}
+body.hacker #drop{border-color:#145a2b;color:var(--dim)}
+body.hacker #drop b{color:var(--green);text-transform:uppercase;letter-spacing:.08em}
+body.hacker #drop:hover,body.hacker #drop.over{border-color:var(--green);background:rgba(0,255,102,.05)}
+body.hacker .item.sel{background:rgba(0,255,102,.1);box-shadow:inset 2px 0 0 var(--green)}
+body.hacker .item:hover{background:rgba(0,255,102,.06)}
+body.hacker .colhead,body.hacker .set h3{color:var(--green);opacity:.8}
+body.hacker .colhead::before,body.hacker .set h3::before{content:"> "}
+body.hacker select,body.hacker input[type=number]{background:#03110a;border-color:var(--line);color:var(--text)}
+body.hacker .chk input{accent-color:#00ff66}
+body.hacker .toggle.on{background:var(--green)}
+body.hacker #viewWrap{background:#010402}
+body.hacker #viewInfo b{color:var(--green)}
+body.hacker #err{background:rgba(255,59,92,.08);border-color:rgba(255,59,92,.5);color:#ff8fa3}
+body.hacker::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:60;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
+#matrix{position:fixed;inset:0;z-index:0;pointer-events:none;display:none;opacity:.35}
+body.hacker #matrix{display:block}
+#term{display:none}
+body.hacker #term{display:block;position:relative;z-index:1;height:150px;border-top:1px solid var(--line);background:rgba(1,8,4,.94);overflow:hidden;padding:6px 12px;font-size:11.5px;line-height:1.38;color:#2fe070}
+body.hacker #term .l{white-space:pre;overflow:hidden;text-overflow:ellipsis}
+body.hacker #term .w{color:#d7ff3b} body.hacker #term .e{color:#ff3b5c} body.hacker #term .k{color:#b9ffd0;text-shadow:0 0 6px rgba(0,255,102,.6)} body.hacker #term .d{color:#1d7a3d}
+body.hacker footer{display:none}
+body.hacker main{height:calc(100% - 64px - 150px)!important}
+body.hacker .glitch{animation:glitch 6s infinite}
+@keyframes glitch{0%,92%,100%{transform:none;filter:none}93%{transform:translateX(2px);filter:hue-rotate(40deg)}95%{transform:translateX(-2px)}97%{transform:translateX(1px) skewX(4deg)}}
+</style>
+<canvas id="matrix"></canvas>
+<script>
+(function(){
+  // ---- Matrix-Regen ----
+  var cv=document.getElementById('matrix'), ctx=cv.getContext('2d'), cols=[], fs=15, last=0;
+  var chars='アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF<>/*+=#$%&';
+  function size(){ cv.width=innerWidth; cv.height=innerHeight; cols=[]; for(var i=0;i<Math.ceil(innerWidth/fs);i++) cols.push(Math.random()*-60); }
+  size(); addEventListener('resize',size);
+  function frame(t){
+    requestAnimationFrame(frame);
+    if(!document.body.classList.contains('hacker')||document.hidden||t-last<50) return; last=t;
+    ctx.fillStyle='rgba(2,6,4,.12)'; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.font=fs+'px Consolas,monospace';
+    for(var i=0;i<cols.length;i++){
+      var y=cols[i]*fs; ctx.fillStyle=Math.random()<.04?'#d8ffe6':'#00c24e';
+      ctx.fillText(chars[(Math.random()*chars.length)|0], i*fs, y);
+      if(y>cv.height && Math.random()>.975) cols[i]=0; else cols[i]++;
+    }
+  }
+  requestAnimationFrame(frame);
+
+  // ---- Konsole ----
+  var term=null, queue=[], busy=0;
+  function hex(n){ var s=''; for(var i=0;i<n;i++) s+='0123456789ABCDEF'[(Math.random()*16)|0]; return s; }
+  function pick(a){ return a[(Math.random()*a.length)|0]; }
+  function ts(){ var d=new Date(); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2)+'.'+('00'+d.getMilliseconds()).slice(-3); }
+  function push(text, cls){
+    if(!term) return;
+    var d=document.createElement('div'); d.className='l '+(cls||''); d.textContent='['+ts()+'] '+text; term.appendChild(d);
+    while(term.childNodes.length>12) term.removeChild(term.firstChild);
+  }
+  var noise=[
+    function(){ return 'mem 0x'+hex(8)+' → 0x'+hex(8)+'  '+pick(['MAP','SYNC','ALLOC','FLUSH','LOCK'])+'  ok'; },
+    function(){ return pick(['vertex','index','uv','normal','lod','section'])+'_buffer['+((Math.random()*4096)|0)+'] checksum '+hex(8).toLowerCase()+' ✓'; },
+    function(){ return 'lzo1x stream 0x'+hex(4)+'  '+((Math.random()*90000)|0)+' B  ratio '+(Math.random()*3+1).toFixed(2); },
+    function(){ return 'thread#'+((Math.random()*16)|0)+' '+pick(['idle','polling','waiting for input','heartbeat']); },
+    function(){ return pick(['scan','probe','hash','verify'])+' sector '+hex(6)+' '+pick(['....... OK','....... OK','....... PASS','....... CLEAN']); },
+    function(){ return 'net.watch '+pick(['eth0','wlan0','lo'])+' rx='+((Math.random()*999)|0)+'kb tx='+((Math.random()*99)|0)+'kb'; },
+    function(){ return 'gpu.shader['+pick(['vs','fs'])+'_'+hex(3).toLowerCase()+'] compiled in '+(Math.random()*4).toFixed(3)+'ms'; }
+  ];
+  function tick(){
+    if(document.body.classList.contains('hacker') && !document.hidden){
+      if(queue.length){ var q=queue.shift(); push(q[0],q[1]); }
+      else if(Math.random()<(busy>Date.now()?0.95:0.35)) push(pick(noise)(), Math.random()<.15?'d':'');
+    }
+    setTimeout(tick, queue.length? 25 : (busy>Date.now()? 30 : 160+Math.random()*260));
+  }
+  window.hx=function(text, cls){ queue.push([text, cls||'k']); };
+  window.hxBurst=function(ms){ busy=Date.now()+(ms||1500); };
+  window.hxProgress=function(label){
+    for(var i=0;i<=10;i++) queue.push([label+' ['+'█'.repeat(i)+'░'.repeat(10-i)+'] '+(i*10)+'%', i===10?'k':'']);
+  };
+  window.addEventListener('DOMContentLoaded',function(){});
+  setTimeout(function(){
+    term=document.getElementById('term');
+    ['MELONE-OS v4.2.0 // secure shell','loading kernel modules ........ OK','mounting /dev/rpf7 ............ OK','decrypt layer [AES-256] ......... OK','connecting to mainframe ........ OK','access granted. welcome, operator.'].forEach(function(t,i){ queue.push([t, i===5?'k':'']); });
+    tick();
+  },0);
+})();
+</script>
+
+<style id="xmas-style">
+:root{--bg:#0e1520;--panel:#141d29;--panel2:#1b2633;--line:#243243;--dim:#8a97a8}
+body.xmas:not(.hacker){background:radial-gradient(ellipse at top,#16233a 0%,#0e1520 60%) fixed}
+#snow{position:fixed;inset:0;pointer-events:none;z-index:50}
+.lights{position:absolute;left:0;right:0;top:-6px;height:34px;margin:0;padding:0 0 0 10px;list-style:none;white-space:nowrap;overflow:hidden;pointer-events:none;z-index:40}
+.lights li{position:relative;display:inline-block;width:11px;height:20px;margin:0 19px;top:12px;border-radius:50%;background:var(--c);box-shadow:0 3px 16px 3px var(--c);animation:glow 1.6s infinite alternate;animation-delay:var(--d)}
+.lights li::before{content:"";position:absolute;left:1px;top:-5px;width:9px;height:7px;border-radius:2px;background:#3a4452}
+.lights li::after{content:"";position:absolute;left:5px;top:-14px;width:41px;height:12px;border-bottom:2px solid #2c3440;border-radius:50%}
+.lights li:last-child::after{display:none}
+@keyframes glow{0%{opacity:1;box-shadow:0 3px 16px 3px var(--c)}100%{opacity:.35;box-shadow:0 3px 6px 0 var(--c)}}
+.snowcap{position:relative}
+.snowcap::before{content:"";position:absolute;left:-2px;right:-2px;top:-6px;height:10px;pointer-events:none;
+  background:radial-gradient(circle at 8px 10px,#f4f8fc 7px,transparent 7.5px) repeat-x;background-size:15px 12px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));border-radius:6px 6px 0 0}
+.snowridge{height:10px;background:radial-gradient(circle at 10px 0,#e9f1f8 9px,transparent 9.5px) repeat-x;background-size:19px 10px;opacity:.9;pointer-events:none}
+.hat{position:absolute;pointer-events:none}
+body.noxmas #snow,body.noxmas .lights,body.noxmas .hat,body.noxmas .snowridge{display:none}
+body.noxmas .snowcap::before{display:none}
+</style>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="santahat" viewBox="0 0 40 34"><path d="M4 26 C8 10 20 2 33 8 C30 13 31 18 34 22 Z" fill="#d93a3a"/><path d="M33 8 C36 9 38 12 37 15" stroke="#d93a3a" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="37" cy="17" r="4" fill="#f4f8fc"/><rect x="1" y="23" width="34" height="8" rx="4" fill="#f4f8fc"/></symbol>
+</defs></svg>
+<canvas id="snow"></canvas>
+<script>
+(function(){
+  var th='hacker'; try{ var st=JSON.parse(localStorage.getItem('mk-settings')||'{}'); if(st.theme) th=st.theme; }catch(e){}
+  window.applyTheme=function(t){ var b=document.body; b.classList.toggle('xmas',t==='xmas'); b.classList.toggle('noxmas',t!=='xmas'); b.classList.toggle('hacker',t==='hacker'); };
+  applyTheme(th);
+  // Lichterkette
+  var cols=['#ff4d4d','#ffd23f','#3ddc84','#4db8ff','#ff7bd5'];
+  document.querySelectorAll('[data-lights]').forEach(function(host){
+    var ul=document.createElement('ul'); ul.className='lights';
+    var n=Math.ceil((host.clientWidth||window.innerWidth)/49)+2;
+    for(var i=0;i<n;i++){ var li=document.createElement('li'); li.style.setProperty('--c',cols[i%cols.length]); li.style.setProperty('--d',(-(i*0.37)%1.6)+'s'); ul.appendChild(li); }
+    host.style.position=host.style.position||'relative'; host.appendChild(ul);
+  });
+  // Schnee
+  var cv=document.getElementById('snow'), ctx=cv.getContext('2d'), flakes=[], last=0;
+  function size(){ cv.width=innerWidth; cv.height=innerHeight; }
+  size(); addEventListener('resize',size);
+  var count=Math.min(140,Math.round(innerWidth*innerHeight/9000));
+  for(var i=0;i<count;i++) flakes.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*2.2+.6,s:Math.random()*.6+.3,w:Math.random()*Math.PI*2});
+  function frame(t){
+    requestAnimationFrame(frame);
+    if(document.body.classList.contains('noxmas')){ ctx.clearRect(0,0,cv.width,cv.height); return; } if(document.hidden||t-last<33) return;
+    var dt=Math.min(3,(t-last)/16.7); last=t;
+    ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle='rgba(255,255,255,.85)'; ctx.beginPath();
+    for(var i=0;i<flakes.length;i++){ var f=flakes[i];
+      f.y+=f.s*dt*1.4; f.w+=.02*dt; f.x+=Math.sin(f.w)*.4*dt;
+      if(f.y>cv.height+5){ f.y=-5; f.x=Math.random()*cv.width; }
+      ctx.moveTo(f.x,f.y); ctx.arc(f.x,f.y,f.r,0,Math.PI*2); }
+    ctx.fill();
+  }
+  requestAnimationFrame(frame);
+
+})();
+</script>
+
+<script>
+(function(){
+var L = window.launcher, $ = function(i){ return document.getElementById(i); };
+var state = { update:false, remote:null, info:null, file:null };
+
+function setStatus(t, cls){ $('status').textContent=t; $('dot').className='dot '+(cls||''); }
+function next(v){ var p=String(v||'1.0.0').split('.').map(Number); p[2]=(p[2]||0)+1; return p.join('.'); }
+function cmp(a,b){ var x=String(a).split('.').map(Number), y=String(b).split('.').map(Number); for(var i=0;i<3;i++){ var d=(x[i]||0)-(y[i]||0); if(d) return d>0?1:-1; } return 0; }
+
+async function refresh(){
+  state.info = await L.info();
+  $('vContent').textContent = state.info.content; $('vProg').textContent = state.info.program;
+  $('pubBtn').style.display = state.info.publisher ? 'block' : 'none';
+  $('go').disabled = true; setStatus('Suche nach Updates …'); if(window.hx){ hx('check remote '+state.info.repo); hxBurst(1200); }
+  try {
+    var r = await L.check();
+    state.update = r.update; state.remote = r.remote;
+    if (r.update){
+      setStatus('Update auf Version '+r.remote.version+' verfügbar', 'up');
+      $('go').textContent='UPDATEN'; $('go').classList.add('up');
+      $('log').textContent = r.remote.changelog || '';
+    } else {
+      setStatus('Du hast die neueste Version', 'ok');
+      $('go').textContent='STARTEN'; $('go').classList.remove('up');
+      $('log').textContent = r.remote ? (r.remote.changelog || '') : '';
+    }
+  } catch(e){
+    state.update=false;
+    setStatus('Keine Verbindung – startet mit Version '+state.info.content, 'err');
+    $('go').textContent='STARTEN'; $('go').classList.remove('up');
+  }
+  $('go').disabled = false;
+}
+
+$('go').onclick = async function(){
+  if (!state.update){ L.start(); return; }
+  $('go').disabled = true; $('go').textContent = 'LÄDT …';
+  var bar=$('bar'), i=bar.querySelector('i'); bar.style.display='block'; i.style.width='35%';
+  try {
+    var v = await L.update(); i.style.width='100%';
+    $('vContent').textContent = v; setStatus('Version '+v+' installiert', 'ok');
+    state.update=false; $('go').textContent='STARTEN'; $('go').classList.remove('up');
+  } catch(e){ setStatus('Update fehlgeschlagen: '+String(e.message||e).replace(/^Error invoking remote method '[^']+': (Error: )?/,''), 'err'); $('go').textContent='STARTEN'; state.update=false; }
+  setTimeout(function(){ bar.style.display='none'; i.style.width='0'; }, 600);
+  $('go').disabled = false;
+};
+
+// Programm-Updates (neue .exe)
+L.onProg(function(d){
+  var p=$('prog'), b=$('progBtn');
+  if (d.state==='available'){ p.style.display='flex'; $('progTxt').textContent='Neue Programmversion '+d.version; b.textContent='Herunterladen'; b.disabled=false; b.onclick=function(){ b.disabled=true; L.progDownload(); }; }
+  if (d.state==='progress'){ $('progTxt').textContent='Lädt … '+d.percent+' %'; }
+  if (d.state==='ready'){ $('progTxt').textContent='Programm-Update bereit'; b.textContent='Neu starten'; b.disabled=false; b.onclick=function(){ L.progInstall(); }; }
+  if (d.state==='error' && p.style.display==='flex'){ $('progTxt').textContent='Programm-Update fehlgeschlagen'; b.disabled=false; }
+});
+
+// Einstellungen: Strg + Umschalt + P
+document.addEventListener('keydown', async function(e){
+  if (e.ctrlKey && e.shiftKey && (e.key==='P'||e.key==='p')){
+    var d = await L.pubGet();
+    $('sRepo').value = d.repo; $('sTok').value='';
+    $('sHint').textContent = d.hasToken ? 'Token ist gespeichert. Leer lassen, um ihn zu behalten.' : 'Noch kein Token gespeichert.';
+    $('sMsg').textContent=''; $('mSet').classList.add('on');
+  }
+  if (e.key==='Escape'){ $('mSet').classList.remove('on'); $('mPub').classList.remove('on'); }
+});
+$('sClose').onclick=function(){ $('mSet').classList.remove('on'); };
+$('sSave').onclick=async function(){
+  var t=$('sTok').value.trim();
+  await L.pubSave(t ? { repo:$('sRepo').value, token:t } : { repo:$('sRepo').value });
+  $('mSet').classList.remove('on'); refresh();
+};
+$('sDel').onclick=async function(){ await L.pubSave({ repo:$('sRepo').value, token:'' }); $('mSet').classList.remove('on'); refresh(); };
+
+// Veröffentlichen
+$('pubBtn').onclick=function(){
+  var base = state.remote && cmp(state.remote.version, state.info.content)>0 ? state.remote.version : state.info.content;
+  $('pVer').value = next(base); $('pLog').value=''; $('pMsg').textContent=''; $('pMsg').className='msg';
+  state.file=null; $('pFile').textContent='Keine Datei gewählt';
+  $('mPub').classList.add('on');
+};
+$('pClose').onclick=function(){ $('mPub').classList.remove('on'); };
+$('pPick').onclick=async function(){
+  var f=await L.pubPick(); if (!f) return;
+  state.file=f; $('pFile').textContent=f.split(/[\\\/]/).pop(); $('pFile').title=f;
+  var m=/(\d+\.\d+\.\d+)/.exec(f.split(/[\\\/]/).pop()); if (m) $('pVer').value=m[1];
+};
+$('pGo').onclick=async function(){
+  var msg=$('pMsg');
+  if (!state.file){ msg.className='msg err'; msg.textContent='Bitte zuerst die Datei wählen.'; return; }
+  $('pGo').disabled=true; msg.className='msg'; msg.textContent='Wird hochgeladen …';
+  try {
+    var v = await L.publish({ file:state.file, version:$('pVer').value, changelog:$('pLog').value });
+    msg.className='msg ok'; msg.textContent='Version '+v+' ist online.';
+    setTimeout(function(){ $('mPub').classList.remove('on'); refresh(); }, 1200);
+  } catch(e){ msg.className='msg err'; msg.textContent=String(e.message||e).replace(/^Error invoking remote method '[^']+': (Error: )?/,''); }
+  $('pGo').disabled=false;
+};
+
+refresh();
+L.progCheck();
+})();
+</script>
+</body>
+</html>

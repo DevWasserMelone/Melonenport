@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Melonenport</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --bg:#0e1520; --panel:#141d29; --panel2:#1b2633; --line:#243243; --text:#e7e9ec; --dim:#8c939d;
+  --green:#46b562; --green2:#3a9a52; --red:#ef5b5b; --yellow:#e8b84a; --blue:#5aa9e6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.4 "Segoe UI",system-ui,sans-serif;overflow:hidden;user-select:none}
+button,select,input,textarea{font:inherit;color:inherit}
+header{height:64px;display:flex;align-items:center;gap:10px;padding:16px 14px 0;position:relative;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:15px;font-weight:600;margin:0}
+.ver{color:var(--dim);font-size:12px;padding:2px 7px;border:1px solid var(--line);border-radius:10px}
+.sp{flex:1}
+main{display:grid;grid-template-columns:340px minmax(0,1fr) 300px;height:calc(100% - 64px - 26px)}
+.col{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;min-width:0}
+.col:last-child{border-right:0;border-left:1px solid var(--line)}
+.colhead{padding:10px 12px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:8px}
+.urlrow{display:flex;gap:6px;padding:0 12px 10px}
+.inp{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:6px 8px;outline:none;user-select:text}
+.inp:focus{border-color:var(--green)}
+#drop{margin:0 12px 10px;border:1.5px dashed #3a4049;border-radius:8px;padding:16px 10px;text-align:center;color:var(--dim);cursor:pointer;transition:.15s}
+#drop b{color:var(--text);display:block;font-size:14px;margin-bottom:3px;font-weight:600}
+#drop:hover,#drop.over{border-color:var(--green);color:var(--text);background:rgba(70,181,98,.06)}
+#list{flex:1;overflow:auto;padding:0 6px 8px}
+.item{display:grid;grid-template-columns:12px 1fr auto;gap:9px;align-items:center;padding:7px 8px;border-radius:6px;cursor:pointer;margin-bottom:2px}
+.item:hover{background:var(--panel2)}
+.item.sel{background:#2a3038}
+.item .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .s{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st{width:10px;height:10px;border-radius:50%;background:#555;justify-self:center}
+.st.ok{background:var(--green)} .st.err{background:var(--red)} .st.busy{background:var(--yellow);animation:pulse 1s infinite alternate} .st.ready{background:var(--blue)}
+@keyframes pulse{to{opacity:.35}}
+.item .x{opacity:0;border:0;background:none;color:var(--dim);cursor:pointer;padding:2px 5px}
+.item:hover .x{opacity:1}
+.empty{color:var(--dim);text-align:center;padding:30px 20px;font-size:12px}
+.actions{padding:10px 12px;border-top:1px solid var(--line);display:flex;gap:8px}
+.btn{white-space:nowrap;border:1px solid var(--line);background:var(--panel2);padding:7px 12px;border-radius:6px;cursor:pointer}
+.btn:hover{border-color:#47505b}
+.btn.main{background:var(--green);border-color:var(--green);color:#0d1a10;font-weight:600}
+.btn.main:hover{background:#52c46e}
+.btn.sm{padding:3px 9px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:default}
+.grow{flex:1}
+#detail{flex:1;overflow:auto;padding:18px 22px;position:relative;z-index:1}
+#detailEmpty{height:100%;display:flex;align-items:center;justify-content:center;color:var(--dim);text-align:center;line-height:1.75}
+#detailEmpty .big{font-size:16px;color:var(--text);margin-bottom:10px}
+#detailEmpty ol{text-align:left;margin:8px auto 0;padding-left:20px;max-width:430px}
+.dTitle{font-size:18px;font-weight:600;margin:0 0 3px;user-select:text}
+.dSub{color:var(--dim);font-size:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.dSub a{color:var(--blue);cursor:pointer;text-decoration:none}
+.dSub a:hover{text-decoration:underline}
+.bar{height:4px;background:var(--panel2);border-radius:2px;overflow:hidden;margin:12px 0 2px;display:none}
+.bar i{display:block;height:100%;width:0;background:var(--green);transition:width .2s}
+.dMsg{margin-top:8px;color:var(--dim)}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:12px 14px;margin-top:14px}
+.card h4{margin:0 0 9px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel2);border-radius:14px;padding:3px 5px 3px 11px;font-family:Consolas,monospace;font-size:13px;user-select:text}
+.chip small{color:var(--dim);font-family:"Segoe UI",sans-serif;font-size:11px}
+.chip button{border:0;background:rgba(255,255,255,.07);border-radius:10px;padding:1px 8px;cursor:pointer;font-size:11px;color:var(--dim)}
+.chip button:hover{color:var(--text)}
+table.files{width:100%;border-collapse:collapse;font-size:12.5px}
+table.files td{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top}
+table.files td:last-child{text-align:right;color:var(--dim);white-space:nowrap;padding-left:10px}
+.msgs div{padding:6px 9px;border-radius:6px;margin-bottom:6px;font-size:12.5px;line-height:1.45}
+.msgs .i{background:rgba(90,169,230,.09);border:1px solid rgba(90,169,230,.3)}
+.msgs .w{background:rgba(232,184,74,.08);border:1px solid rgba(232,184,74,.35);color:#f0d9a6}
+.msgs .e{background:rgba(239,91,91,.1);border:1px solid rgba(239,91,91,.4);color:#f3a3a3}
+.row{margin-bottom:10px}
+.row label.t{display:block;margin-bottom:4px;color:#c3c8ce}
+.row select,.row .inp{width:100%}
+select{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:5px 7px;outline:none}
+select:focus{border-color:var(--green)}
+.set{padding:4px 14px 14px;overflow:auto;flex:1}
+.set h3{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);font-weight:600;margin:16px 0 8px}
+.set h3:first-child{margin-top:6px}
+.chk{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;cursor:pointer}
+.chk input{margin:2px 0 0;accent-color:var(--green)}
+.chk small{display:block;color:var(--dim);font-size:11px}
+.path{font-size:11px;color:var(--dim);overflow-wrap:anywhere;margin-top:4px;user-select:text}
+.note{font-size:11.5px;color:var(--dim);line-height:1.5}
+textarea.cfg{width:100%;height:110px;resize:vertical;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:6px 8px;font:12px Consolas,monospace;outline:none;user-select:text}
+.res{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.res code{font:13px Consolas,monospace;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:3px 8px;user-select:text}
+footer{height:26px;border-top:1px solid var(--line);background:var(--panel);display:flex;align-items:center;padding:0 12px;font-size:12px;color:var(--dim);gap:8px}
+.log{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:#22303f;border:1px solid var(--line);padding:7px 14px;border-radius:7px;z-index:100;opacity:0;transition:.2s;pointer-events:none}
+#toast.on{opacity:1}
+body.hacker .inp,body.hacker textarea.cfg,body.hacker select{background:#03110a;border-color:var(--line);color:var(--text)}
+body.hacker .card{background:rgba(4,14,8,.85)}
+body.hacker .chip{background:#03110a;color:var(--green)}
+body.hacker .item.ready .st{background:#d7ff3b}
+body.hacker #detailEmpty .big{color:var(--green)}
+body.hacker .dTitle{color:var(--green);text-shadow:0 0 6px rgba(0,255,102,.5)}
+body.hacker .bar i{background:var(--green);box-shadow:0 0 8px var(--green)}
+body.hacker .res code{background:#03110a;color:var(--green)}
+</style>
+</head>
+<body>
+<header data-lights>
+  <span style="position:relative;display:inline-flex"><svg class="hat" width="20" height="17" style="left:-5px;top:-11px;transform:rotate(-18deg)"><use href="#santahat"/></svg><svg width="24" height="24" viewBox="0 0 24 24"><path d="M2 8a10 10 0 0 0 20 0z" fill="#46b562"/><path d="M4.2 8a7.8 7.8 0 0 0 15.6 0z" fill="#f2f0e6"/><path d="M5.3 8a6.7 6.7 0 0 0 13.4 0z" fill="#ef5b5b"/><circle cx="9" cy="10.5" r=".8" fill="#222"/><circle cx="12" cy="12.3" r=".8" fill="#222"/><circle cx="15" cy="10.5" r=".8" fill="#222"/></svg></span>
+  <h1 class="glitch">Melonenport</h1><span class="ver" id="ver">–</span>
+  <div class="sp"></div>
+  <div class="snowridge" style="position:absolute;left:0;right:0;bottom:-10px;z-index:5"></div>
+  <span class="note" id="hdrInfo"></span>
+</header>
+<main>
+  <section class="col">
+    <div class="colhead">Warteschlange <span class="sp"></span><span id="count"></span></div>
+    <div class="urlrow"><input class="inp" id="url" placeholder="Link von gta5-mods.com einfügen …" spellcheck="false"><button class="btn main" id="urlAdd" title="Hinzufügen (Enter)">＋</button></div>
+    <div id="drop" class="snowcap"><b>Mods hier reinziehen</b>ZIP, RAR, 7Z, OIV, RPF oder Ordner · klicken zum Auswählen</div>
+    <div id="list"><div class="empty">Noch nichts in der Liste.<br>Mehrere Links? Einfach nacheinander einfügen.</div></div>
+    <div class="actions">
+      <button class="btn" id="clear">Liste leeren</button>
+      <button class="btn main grow snowcap" id="convertAll" disabled>Alle umwandeln</button>
+    </div>
+  </section>
+  <section class="col">
+    <div id="detail"></div>
+  </section>
+  <section class="col">
+    <div class="colhead">Einstellungen</div>
+    <div class="set">
+      <h3>Ausgabe</h3>
+      <div class="row">
+        <label class="t">Ausgabeordner</label>
+        <button class="btn" id="outPick" style="width:100%">📁 Ordner wählen …</button>
+        <div class="path" id="outPath">Noch keiner gewählt. Am besten direkt den <b>resources</b>-Ordner deines Servers, z. B. <i>resources/[fahrzeuge]</i>.</div>
+        <button class="btn sm" id="outOpen" style="margin-top:6px;display:none">Ordner öffnen</button>
+      </div>
+      <div class="row">
+        <label class="t">Aufteilung</label>
+        <select id="optMode"><option value="single">Jeder Mod eine eigene Resource</option><option value="pack">Alles in ein Fahrzeug-Pack</option></select>
+      </div>
+      <div class="row" id="packRow" style="display:none">
+        <label class="t">Name vom Pack</label>
+        <input class="inp" id="optPack" spellcheck="false">
+        <div class="path">Das Pack wird bei „Alle umwandeln“ jedes Mal aus der ganzen Liste neu gebaut.</div>
+      </div>
+      <label class="chk" id="autoRow"><input type="checkbox" id="optAuto"><span>Automatisch umwandeln<small>Sobald ein Mod geladen ist, landet er direkt im Ausgabeordner</small></span></label>
+      <label class="chk"><input type="checkbox" id="optNames"><span>Fahrzeugnamen eintragen<small>Erstellt eine client.lua, damit im Spiel nicht „NULL“ steht</small></span></label>
+
+      <h3>Für die server.cfg</h3>
+      <textarea class="cfg" id="cfg" readonly placeholder="Hier erscheinen die ensure-Zeilen der umgewandelten Mods."></textarea>
+      <button class="btn sm" id="cfgCopy" style="margin-top:6px">Kopieren</button>
+
+      <h3>Design</h3>
+      <div class="row"><select id="optTheme"><option value="hacker">Hacker</option><option value="xmas">Weihnachten</option><option value="plain">Schlicht</option></select></div>
+
+      <h3>Wichtig</h3>
+      <div class="note">Viele Modder erlauben ihre Mods nur im Einzelspieler. Bevor ein Mod auf einen öffentlichen Server kommt, frag den Autor um Erlaubnis. Den Autor siehst du in der Mitte beim Mod.</div>
+    </div>
+  </section>
+</main>
+<div id="toast"></div>
+
+<div id="term"></div>
+<footer><span class="log" id="log">Bereit.</span></footer>
+
+<style id="hacker-style">
+body.hacker{--bg:#020604;--panel:rgba(4,14,8,.86);--panel2:rgba(8,26,14,.9);--line:#0e3b1d;--text:#b9ffd0;--dim:#3c9e5a;--green:#00ff66;--red:#ff3b5c;--yellow:#d7ff3b;
+  background:#020604;font-family:Consolas,"Cascadia Mono","Lucida Console",monospace;letter-spacing:.01em}
+body.hacker *{font-family:inherit}
+body.hacker header,body.hacker footer,body.hacker .viewbar{background:var(--panel)}
+body.hacker main,body.hacker header,body.hacker footer{position:relative;z-index:1}
+body.hacker h1{color:var(--green);text-shadow:0 0 8px rgba(0,255,102,.7);text-transform:uppercase;letter-spacing:.12em;font-size:14px}
+body.hacker h1::after{content:"_";animation:blink 1s steps(1) infinite;margin-left:2px}
+body.hacker h1::before{content:"root@melone:~# ";color:var(--dim);text-shadow:none;letter-spacing:0;font-weight:400;text-transform:none}
+@keyframes blink{50%{opacity:0}}
+body.hacker .btn{background:transparent;border-color:var(--line);color:var(--green);text-transform:uppercase;letter-spacing:.08em;font-size:12px}
+body.hacker .btn:hover{border-color:var(--green);box-shadow:0 0 10px rgba(0,255,102,.35) inset}
+body.hacker .btn.main{background:rgba(0,255,102,.12);border-color:var(--green);color:var(--green);text-shadow:0 0 6px rgba(0,255,102,.8)}
+body.hacker .btn.main:hover{background:rgba(0,255,102,.22)}
+body.hacker #drop{border-color:#145a2b;color:var(--dim)}
+body.hacker #drop b{color:var(--green);text-transform:uppercase;letter-spacing:.08em}
+body.hacker #drop:hover,body.hacker #drop.over{border-color:var(--green);background:rgba(0,255,102,.05)}
+body.hacker .item.sel{background:rgba(0,255,102,.1);box-shadow:inset 2px 0 0 var(--green)}
+body.hacker .item:hover{background:rgba(0,255,102,.06)}
+body.hacker .colhead,body.hacker .set h3{color:var(--green);opacity:.8}
+body.hacker .colhead::before,body.hacker .set h3::before{content:"> "}
+body.hacker select,body.hacker input[type=number]{background:#03110a;border-color:var(--line);color:var(--text)}
+body.hacker .chk input{accent-color:#00ff66}
+body.hacker .toggle.on{background:var(--green)}
+body.hacker #viewWrap{background:#010402}
+body.hacker #viewInfo b{color:var(--green)}
+body.hacker #err{background:rgba(255,59,92,.08);border-color:rgba(255,59,92,.5);color:#ff8fa3}
+body.hacker::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:60;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
+#matrix{position:fixed;inset:0;z-index:0;pointer-events:none;display:none;opacity:.35}
+body.hacker #matrix{display:block}
+#term{display:none}
+body.hacker #term{display:block;position:relative;z-index:1;height:150px;border-top:1px solid var(--line);background:rgba(1,8,4,.94);overflow:hidden;padding:6px 12px;font-size:11.5px;line-height:1.38;color:#2fe070}
+body.hacker #term .l{white-space:pre;overflow:hidden;text-overflow:ellipsis}
+body.hacker #term .w{color:#d7ff3b} body.hacker #term .e{color:#ff3b5c} body.hacker #term .k{color:#b9ffd0;text-shadow:0 0 6px rgba(0,255,102,.6)} body.hacker #term .d{color:#1d7a3d}
+body.hacker footer{display:none}
+body.hacker main{height:calc(100% - 64px - 150px)!important}
+body.hacker .glitch{animation:glitch 6s infinite}
+@keyframes glitch{0%,92%,100%{transform:none;filter:none}93%{transform:translateX(2px);filter:hue-rotate(40deg)}95%{transform:translateX(-2px)}97%{transform:translateX(1px) skewX(4deg)}}
+</style>
+<canvas id="matrix"></canvas>
+<script>
+(function(){
+  // ---- Matrix-Regen ----
+  var cv=document.getElementById('matrix'), ctx=cv.getContext('2d'), cols=[], fs=15, last=0;
+  var chars='アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF<>/*+=#$%&';
+  function size(){ cv.width=innerWidth; cv.height=innerHeight; cols=[]; for(var i=0;i<Math.ceil(innerWidth/fs);i++) cols.push(Math.random()*-60); }
+  size(); addEventListener('resize',size);
+  function frame(t){
+    requestAnimationFrame(frame);
+    if(!document.body.classList.contains('hacker')||document.hidden||t-last<50) return; last=t;
+    ctx.fillStyle='rgba(2,6,4,.12)'; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.font=fs+'px Consolas,monospace';
+    for(var i=0;i<cols.length;i++){
+      var y=cols[i]*fs; ctx.fillStyle=Math.random()<.04?'#d8ffe6':'#00c24e';
+      ctx.fillText(chars[(Math.random()*chars.length)|0], i*fs, y);
+      if(y>cv.height && Math.random()>.975) cols[i]=0; else cols[i]++;
+    }
+  }
+  requestAnimationFrame(frame);
+
+  // ---- Konsole ----
+  var term=null, queue=[], busy=0;
+  function hex(n){ var s=''; for(var i=0;i<n;i++) s+='0123456789ABCDEF'[(Math.random()*16)|0]; return s; }
+  function pick(a){ return a[(Math.random()*a.length)|0]; }
+  function ts(){ var d=new Date(); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2)+'.'+('00'+d.getMilliseconds()).slice(-3); }
+  function push(text, cls){
+    if(!term) return;
+    var d=document.createElement('div'); d.className='l '+(cls||''); d.textContent='['+ts()+'] '+text; term.appendChild(d);
+    while(term.childNodes.length>12) term.removeChild(term.firstChild);
+  }
+  var noise=[
+    function(){ return 'mem 0x'+hex(8)+' → 0x'+hex(8)+'  '+pick(['MAP','SYNC','ALLOC','FLUSH','LOCK'])+'  ok'; },
+    function(){ return pick(['yft','ytd','meta','rpf','awc','ybn'])+'_block['+((Math.random()*4096)|0)+'] checksum '+hex(8).toLowerCase()+' ✓'; },
+    function(){ return 'deflate stream 0x'+hex(4)+'  '+((Math.random()*90000)|0)+' B  ratio '+(Math.random()*3+1).toFixed(2); },
+    function(){ return 'thread#'+((Math.random()*16)|0)+' '+pick(['idle','polling','waiting for input','heartbeat']); },
+    function(){ return pick(['scan','probe','hash','verify'])+' sector '+hex(6)+' '+pick(['....... OK','....... OK','....... PASS','....... CLEAN']); },
+    function(){ return 'net.watch '+pick(['eth0','wlan0','lo'])+' rx='+((Math.random()*999)|0)+'kb tx='+((Math.random()*99)|0)+'kb'; },
+    function(){ return 'gpu.shader['+pick(['vs','fs'])+'_'+hex(3).toLowerCase()+'] compiled in '+(Math.random()*4).toFixed(3)+'ms'; }
+  ];
+  function tick(){
+    if(document.body.classList.contains('hacker') && !document.hidden){
+      if(queue.length){ var q=queue.shift(); push(q[0],q[1]); }
+      else if(Math.random()<(busy>Date.now()?0.95:0.35)) push(pick(noise)(), Math.random()<.15?'d':'');
+    }
+    setTimeout(tick, queue.length? 25 : (busy>Date.now()? 30 : 160+Math.random()*260));
+  }
+  window.hx=function(text, cls){ queue.push([text, cls||'k']); };
+  window.hxBurst=function(ms){ busy=Date.now()+(ms||1500); };
+  window.hxProgress=function(label){
+    for(var i=0;i<=10;i++) queue.push([label+' ['+'█'.repeat(i)+'░'.repeat(10-i)+'] '+(i*10)+'%', i===10?'k':'']);
+  };
+  window.addEventListener('DOMContentLoaded',function(){});
+  setTimeout(function(){
+    term=document.getElementById('term');
+    ['MELONE-OS v4.2.0 // secure shell','loading kernel modules ........ OK','mounting /dev/rpf7 ............ OK','decrypt layer [AES-256] ......... OK','connecting to mainframe ........ OK','access granted. welcome, operator.'].forEach(function(t,i){ queue.push([t, i===5?'k':'']); });
+    tick();
+  },0);
+})();
+</script>
+
+<style id="xmas-style">
+:root{--bg:#0e1520;--panel:#141d29;--panel2:#1b2633;--line:#243243;--dim:#8a97a8}
+body.xmas:not(.hacker){background:radial-gradient(ellipse at top,#16233a 0%,#0e1520 60%) fixed}
+#snow{position:fixed;inset:0;pointer-events:none;z-index:50}
+.lights{position:absolute;left:0;right:0;top:-6px;height:34px;margin:0;padding:0 0 0 10px;list-style:none;white-space:nowrap;overflow:hidden;pointer-events:none;z-index:40}
+.lights li{position:relative;display:inline-block;width:11px;height:20px;margin:0 19px;top:12px;border-radius:50%;background:var(--c);box-shadow:0 3px 16px 3px var(--c);animation:glow 1.6s infinite alternate;animation-delay:var(--d)}
+.lights li::before{content:"";position:absolute;left:1px;top:-5px;width:9px;height:7px;border-radius:2px;background:#3a4452}
+.lights li::after{content:"";position:absolute;left:5px;top:-14px;width:41px;height:12px;border-bottom:2px solid #2c3440;border-radius:50%}
+.lights li:last-child::after{display:none}
+@keyframes glow{0%{opacity:1;box-shadow:0 3px 16px 3px var(--c)}100%{opacity:.35;box-shadow:0 3px 6px 0 var(--c)}}
+.snowcap{position:relative}
+.snowcap::before{content:"";position:absolute;left:-2px;right:-2px;top:-6px;height:10px;pointer-events:none;
+  background:radial-gradient(circle at 8px 10px,#f4f8fc 7px,transparent 7.5px) repeat-x;background-size:15px 12px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));border-radius:6px 6px 0 0}
+.snowridge{height:10px;background:radial-gradient(circle at 10px 0,#e9f1f8 9px,transparent 9.5px) repeat-x;background-size:19px 10px;opacity:.9;pointer-events:none}
+.hat{position:absolute;pointer-events:none}
+body.noxmas #snow,body.noxmas .lights,body.noxmas .hat,body.noxmas .snowridge{display:none}
+body.noxmas .snowcap::before{display:none}
+</style>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="santahat" viewBox="0 0 40 34"><path d="M4 26 C8 10 20 2 33 8 C30 13 31 18 34 22 Z" fill="#d93a3a"/><path d="M33 8 C36 9 38 12 37 15" stroke="#d93a3a" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="37" cy="17" r="4" fill="#f4f8fc"/><rect x="1" y="23" width="34" height="8" rx="4" fill="#f4f8fc"/></symbol>
+</defs></svg>
+<canvas id="snow"></canvas>
+<script>
+(function(){
+  var th='hacker'; try{ var st=JSON.parse(localStorage.getItem('mk-settings')||'{}'); if(st.theme) th=st.theme; }catch(e){}
+  window.applyTheme=function(t){ var b=document.body; b.classList.toggle('xmas',t==='xmas'); b.classList.toggle('noxmas',t!=='xmas'); b.classList.toggle('hacker',t==='hacker'); };
+  applyTheme(th);
+  // Lichterkette
+  var cols=['#ff4d4d','#ffd23f','#3ddc84','#4db8ff','#ff7bd5'];
+  document.querySelectorAll('[data-lights]').forEach(function(host){
+    var ul=document.createElement('ul'); ul.className='lights';
+    var n=Math.ceil((host.clientWidth||window.innerWidth)/49)+2;
+    for(var i=0;i<n;i++){ var li=document.createElement('li'); li.style.setProperty('--c',cols[i%cols.length]); li.style.setProperty('--d',(-(i*0.37)%1.6)+'s'); ul.appendChild(li); }
+    host.style.position=host.style.position||'relative'; host.appendChild(ul);
+  });
+  // Schnee
+  var cv=document.getElementById('snow'), ctx=cv.getContext('2d'), flakes=[], last=0;
+  function size(){ cv.width=innerWidth; cv.height=innerHeight; }
+  size(); addEventListener('resize',size);
+  var count=Math.min(140,Math.round(innerWidth*innerHeight/9000));
+  for(var i=0;i<count;i++) flakes.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*2.2+.6,s:Math.random()*.6+.3,w:Math.random()*Math.PI*2});
+  function frame(t){
+    requestAnimationFrame(frame);
+    if(document.body.classList.contains('noxmas')){ ctx.clearRect(0,0,cv.width,cv.height); return; } if(document.hidden||t-last<33) return;
+    var dt=Math.min(3,(t-last)/16.7); last=t;
+    ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle='rgba(255,255,255,.85)'; ctx.beginPath();
+    for(var i=0;i<flakes.length;i++){ var f=flakes[i];
+      f.y+=f.s*dt*1.4; f.w+=.02*dt; f.x+=Math.sin(f.w)*.4*dt;
+      if(f.y>cv.height+5){ f.y=-5; f.x=Math.random()*cv.width; }
+      ctx.moveTo(f.x,f.y); ctx.arc(f.x,f.y,f.r,0,Math.PI*2); }
+    ctx.fill();
+  }
+  requestAnimationFrame(frame);
+
+})();
+</script>
+<script>
+// ===== Melonenport Engine: GTA5-Add-Ons -> FiveM-Resources =====
+var MP = (function () {
+  var td = new TextDecoder('utf-8');
+
+  function err(msg, code) { var e = new Error(msg); e.code = code; return e; }
+
+  async function inflateRaw(u8) {
+    var ds = new DecompressionStream('deflate-raw');
+    var out = await new Response(new Blob([u8]).stream().pipeThrough(ds)).arrayBuffer();
+    return new Uint8Array(out);
+  }
+
+  // ---------- RSC7-Größen ----------
+  function sizeFromFlags(f) {
+    f = f >>> 0;
+    var s = ((f >>> 27) & 1) + (((f >>> 26) & 1) << 1) + (((f >>> 25) & 1) << 2) + (((f >>> 24) & 1) << 3) +
+      (((f >>> 17) & 0x7F) << 4) + (((f >>> 11) & 0x3F) << 5) + (((f >>> 7) & 0xF) << 6) +
+      (((f >>> 5) & 0x3) << 7) + (((f >>> 4) & 1) << 8);
+    return (0x200 << (f & 0xF)) * s;
+  }
+  function rscInfo(sys, gfx) { return { virt: sizeFromFlags(sys), phys: sizeFromFlags(gfx) }; }
+  function rscFromHeader(u8) {
+    if (!u8 || u8.length < 16) return null;
+    var dv = new DataView(u8.buffer, u8.byteOffset, 16);
+    if (dv.getUint32(0, true) !== 0x37435352) return null;
+    return rscInfo(dv.getUint32(8, true), dv.getUint32(12, true));
+  }
+
+  // ---------- RPF7 lesen ----------
+  var ENC = { 0: 'keine', 0x4E45504F: 'OPEN', 0x0FFFFFF9: 'AES', 0x0FEFFFFF: 'NG' };
+  function parseRpf(buf, label) {
+    if (buf.length < 16) throw err(label + ': Datei ist zu klein für ein RPF-Archiv.');
+    var dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    if (dv.getUint32(0, true) !== 0x52504637) throw err(label + ': Das ist kein GTA-V-RPF-Archiv (RPF7).');
+    var count = dv.getUint32(4, true), namesLen = dv.getUint32(8, true), enc = dv.getUint32(12, true);
+    if (enc === 0x0FFFFFF9 || enc === 0x0FEFFFFF) {
+      throw err(label + ' ist verschlüsselt (' + ENC[enc] + '). Öffne die Datei in OpenIV oder CodeWalker, exportiere den Inhalt in einen Ordner und zieh diesen Ordner hier rein.', 'ENC');
+    }
+    var namesOff = 16 + count * 16;
+    if (namesOff + namesLen > buf.length) throw err(label + ': Archiv ist beschädigt.');
+    function name(off) {
+      var s = namesOff + off, e = s;
+      while (e < namesOff + namesLen && buf[e] !== 0) e++;
+      return td.decode(buf.subarray(s, e));
+    }
+    var ents = [];
+    for (var i = 0; i < count; i++) {
+      var b = 16 + i * 16, x = dv.getUint32(b, true), y = dv.getUint32(b + 4, true);
+      if (y === 0x7FFFFF00) ents.push({ dir: true, name: name(x), start: dv.getUint32(b + 8, true), cnt: dv.getUint32(b + 12, true) });
+      else {
+        var size = (x >>> 16) | ((y & 0xFF) << 16), off = (y >>> 8) & 0xFFFFFF;
+        if (y & 0x80000000) ents.push({ res: true, name: name(x & 0xFFFF), size: size, off: off & 0x7FFFFF, sys: dv.getUint32(b + 8, true), gfx: dv.getUint32(b + 12, true) });
+        else ents.push({ name: name(x & 0xFFFF), size: size, off: off, usize: dv.getUint32(b + 8, true), enc: dv.getUint32(b + 12, true) });
+      }
+    }
+    var files = [];
+    (function walk(idx, prefix, depth) {
+      var d = ents[idx]; if (!d || !d.dir || depth > 32) return;
+      for (var k = d.start; k < d.start + d.cnt && k < ents.length; k++) {
+        var en = ents[k], p = prefix ? prefix + '/' + en.name : en.name;
+        if (en.dir) walk(k, p, depth + 1);
+        else files.push(makeEntry(buf, en, p, label));
+      }
+    })(0, '', 0);
+    return files;
+  }
+  function makeEntry(buf, en, p, label) {
+    var start = en.off * 512;
+    if (en.res) {
+      var size = en.size;
+      if (size === 0xFFFFFF && start + 16 <= buf.length) size = (buf[start + 7] | (buf[start + 14] << 8) | (buf[start + 5] << 16) | (buf[start + 2] << 24)) >>> 0;
+      return {
+        rel: p, name: en.name, size: size, rsc: rscInfo(en.sys, en.gfx),
+        read: async function () {
+          if (start + size > buf.length || size < 16) throw err(label + ': ' + p + ' ist beschädigt.');
+          var out = new Uint8Array(size), dv = new DataView(out.buffer);
+          dv.setUint32(0, 0x37435352, true);
+          dv.setUint32(4, (((en.sys >>> 28) & 0xF) | ((en.gfx >>> 24) & 0xF0)) >>> 0, true);
+          dv.setUint32(8, en.sys >>> 0, true); dv.setUint32(12, en.gfx >>> 0, true);
+          out.set(buf.subarray(start + 16, start + size), 16);
+          return out;
+        }
+      };
+    }
+    return {
+      rel: p, name: en.name, size: en.size || en.usize,
+      read: async function () {
+        if (en.enc) throw err(label + ': ' + p + ' ist verschlüsselt und kann nicht gelesen werden.', 'ENC');
+        if (!en.size) return buf.subarray(start, start + en.usize);
+        return inflateRaw(buf.subarray(start, start + en.size));
+      }
+    };
+  }
+  // RPF komplett aufklappen (auch RPFs in RPFs)
+  async function expandRpf(buf, label, prefix, out, depth, warnings) {
+    var list = parseRpf(buf, label);
+    for (var i = 0; i < list.length; i++) {
+      var f = list[i]; f.rel = prefix + f.rel; f.from = label;
+      if (/\.rpf$/i.test(f.name) && !f.rsc && depth < 6) {
+        try { await expandRpf(await f.read(), f.name, f.rel + '/', out, depth + 1, warnings); }
+        catch (e) { warnings.push(e.message); }
+      } else out.push(f);
+    }
+    return out;
+  }
+
+  // ---------- Quellen erkennen ----------
+  var STREAM_EXT = /\.(ytd|yft|ydr|ydd|ybn|ycd|ytyp|ymap|yfd|ypt|ynd|ynv|ymf|yvr|ywr|ysc|gfx)$/i;
+  var AUDIO_EXT = /\.(awc|rel)$/i;
+  var META_EXT = /\.(meta|xml)$/i;
+
+  function dirOf(rel) { var i = rel.lastIndexOf('/'); return i < 0 ? '' : rel.slice(0, i); }
+  function top(rel) { var i = rel.indexOf('/'); return i < 0 ? '' : rel.slice(0, i); }
+
+  // realFiles: [{path, rel, size}]
+  function findCandidates(realFiles) {
+    var c = [], fivemDirs = [];
+    realFiles.forEach(function (f) { if (/(^|\/)(fxmanifest|__resource)\.lua$/i.test(f.rel)) fivemDirs.push(dirOf(f.rel)); });
+    fivemDirs.forEach(function (d) {
+      c.push({ kind: 'fivem', root: d, label: (d || 'Hauptordner') + ' (schon FiveM-fertig)', score: 100,
+        files: realFiles.filter(function (f) { return d === '' || f.rel.indexOf(d + '/') === 0; }) });
+    });
+    function inFivem(rel) { return fivemDirs.some(function (d) { return d === '' || rel.indexOf(d + '/') === 0; }); }
+    realFiles.forEach(function (f) {
+      if (/\.rpf$/i.test(f.rel) && !inFivem(f.rel)) {
+        var low = f.rel.toLowerCase(), s = 60;
+        if (/dlc\.rpf$/.test(low)) s += 10;
+        if (/add.?on|addon/.test(low)) s += 8;
+        if (/replace|ersetz/.test(low)) s -= 25;
+        if (/no.?lod|without/.test(low)) s -= 3;
+        c.push({ kind: 'rpf', root: dirOf(f.rel), file: f, label: f.rel, score: s, files: [f] });
+      }
+    });
+    var loose = realFiles.filter(function (f) { return (STREAM_EXT.test(f.rel) || AUDIO_EXT.test(f.rel)) && !inFivem(f.rel); });
+    if (loose.length) {
+      var groups = {};
+      loose.forEach(function (f) { var t = top(f.rel); (groups[t] = groups[t] || []).push(f); });
+      Object.keys(groups).forEach(function (t) {
+        var files = realFiles.filter(function (f) { return !inFivem(f.rel) && !/\.rpf$/i.test(f.rel) && (t === '' ? true : f.rel.indexOf(t + '/') === 0); });
+        var low = t.toLowerCase(), s = 40;
+        if (/replace|ersetz/.test(low)) s -= 25;
+        if (/add.?on/.test(low)) s += 8;
+        c.push({ kind: 'loose', root: t, label: (t || 'Hauptordner') + ' (lose Dateien)', score: s, files: files });
+      });
+    }
+    c.sort(function (a, b) { return b.score - a.score; });
+    c.forEach(function (x, i) { x.id = i; });
+    return c;
+  }
+
+  // Kandidat in virtuelle Dateien umwandeln
+  async function loadCandidate(cand, readReal) {
+    var warnings = [], out = [];
+    if (cand.kind === 'rpf') {
+      var buf = await readReal(cand.file.path);
+      await expandRpf(buf, cand.file.rel.split('/').pop(), '', out, 0, warnings);
+    } else {
+      var base = cand.root ? cand.root.length + 1 : 0;
+      for (var i = 0; i < cand.files.length; i++) {
+        var f = cand.files[i];
+        (function (f) {
+          out.push({ rel: f.rel.slice(base), name: f.rel.split('/').pop(), size: f.size, real: f.path, read: function () { return readReal(f.path); } });
+        })(f);
+      }
+    }
+    return { files: out, warnings: warnings };
+  }
+
+  // ---------- Metas einordnen ----------
+  var ROOTS = {
+    CVehicleModelInfo__InitDataList: 'VEHICLE_METADATA_FILE',
+    CHandlingDataMgr: 'HANDLING_FILE',
+    CVehicleModelInfoVarGlobal: 'CARCOLS_FILE',
+    CVehicleModelInfoVariation: 'VEHICLE_VARIATION_FILE',
+    CVehicleMetadataMgr: 'VEHICLE_LAYOUTS_FILE',
+    CWeaponInfoBlob: 'WEAPONINFO_FILE',
+    CWeaponAnimationsSets: 'WEAPON_ANIMATIONS_FILE',
+    CWeaponComponentInfoBlob: 'WEAPONCOMPONENTSINFO_FILE',
+    CExplosionInfoManager: 'EXPLOSION_INFO_FILE',
+    CPedModelInfo__InitDataList: 'PED_METADATA_FILE',
+    CShopVehicleDataArray: 'VEHICLE_SHOP_DLC_FILE',
+    CDataFileMgr__ContentsOfDataFileXml: null,
+    SSetupData: null
+  };
+  var NAMES = [
+    [/^vehicles.*\.meta$/, 'VEHICLE_METADATA_FILE'], [/^handling.*\.meta$/, 'HANDLING_FILE'], [/^carcols.*\.meta$/, 'CARCOLS_FILE'],
+    [/^carvariations.*\.meta$/, 'VEHICLE_VARIATION_FILE'], [/^vehiclelayouts.*\.meta$/, 'VEHICLE_LAYOUTS_FILE'],
+    [/^weaponanimations.*\.meta$/, 'WEAPON_ANIMATIONS_FILE'], [/^weaponcomponents.*\.meta$/, 'WEAPONCOMPONENTSINFO_FILE'],
+    [/^weapon.*\.meta$/, 'WEAPONINFO_FILE'], [/^explosion.*\.meta$/, 'EXPLOSION_INFO_FILE'], [/^dlctext.*\.meta$/, 'DLC_TEXT_FILE'],
+    [/^contentunlocks.*\.meta$/, 'CONTENT_UNLOCKING_META_FILE'], [/^ptfxassetinfo.*\.meta$/, 'PTFXASSETINFO_FILE'],
+    [/^peds.*\.meta$/, 'PED_METADATA_FILE'], [/^shop_vehicle.*\.meta$/, 'VEHICLE_SHOP_DLC_FILE']
+  ];
+  var ORDER = ['VEHICLE_LAYOUTS_FILE', 'HANDLING_FILE', 'VEHICLE_METADATA_FILE', 'CARCOLS_FILE', 'VEHICLE_VARIATION_FILE',
+    'WEAPON_ANIMATIONS_FILE', 'WEAPONCOMPONENTSINFO_FILE', 'WEAPONINFO_FILE', 'EXPLOSION_INFO_FILE', 'PED_METADATA_FILE',
+    'PTFXASSETINFO_FILE', 'CONTENT_UNLOCKING_META_FILE', 'DLC_TEXT_FILE', 'VEHICLE_SHOP_DLC_FILE'];
+  var NICE = {
+    VEHICLE_METADATA_FILE: 'Fahrzeugdaten', HANDLING_FILE: 'Fahrverhalten', CARCOLS_FILE: 'Farben/Tuning/Licht', VEHICLE_VARIATION_FILE: 'Varianten',
+    VEHICLE_LAYOUTS_FILE: 'Sitze/Layouts', WEAPONINFO_FILE: 'Waffen', WEAPON_ANIMATIONS_FILE: 'Waffen-Animationen', WEAPONCOMPONENTSINFO_FILE: 'Waffen-Teile',
+    EXPLOSION_INFO_FILE: 'Explosionen', PED_METADATA_FILE: 'Peds', PTFXASSETINFO_FILE: 'Effekte', CONTENT_UNLOCKING_META_FILE: 'Freischaltungen',
+    DLC_TEXT_FILE: 'Texte', VEHICLE_SHOP_DLC_FILE: 'Shop'
+  };
+  var SKIP_META = /^(content|setup2|setup)\.xml$|^(shop_vehicle|contentunlocks|dlctext)\.meta$/i;
+
+  function rootTag(text) {
+    var m = text.replace(/^\uFEFF/, '').replace(/<\?[\s\S]*?\?>/g, '').replace(/<!--[\s\S]*?-->/g, '').match(/<\s*([A-Za-z_][\w.:-]*)/);
+    return m ? m[1] : '';
+  }
+  function tags(text, tag) {
+    var re = new RegExp('<' + tag + '>\\s*([^<]*?)\\s*</' + tag + '>', 'gi'), out = [], m;
+    while ((m = re.exec(text))) if (m[1]) out.push(m[1]);
+    return out;
+  }
+  function contentTypes(text) {
+    var map = {}, re = /<Item>([\s\S]*?)<\/Item>/gi, m;
+    while ((m = re.exec(text))) {
+      var fn = (m[1].match(/<filename>\s*([^<]+?)\s*<\/filename>/i) || [])[1], ty = (m[1].match(/<fileType>\s*([^<]+?)\s*<\/fileType>/i) || [])[1];
+      if (fn && ty) map[fn.split(/[\/\\]/).pop().toLowerCase()] = ty.trim();
+    }
+    return map;
+  }
+  function fmtMB(n) { return (n / 1048576).toFixed(n > 10485760 ? 0 : 1).replace('.', ',') + ' MB'; }
+
+  // vfiles -> Analyse
+  async function analyze(loaded, opts) {
+    opts = opts || {};
+    var files = loaded.files, warnings = loaded.warnings.slice(), info = [];
+    var res = { stream: [], metas: [], audio: [], banks: {}, copy: [], spawns: [], gameNames: {}, warnings: warnings, info: info, fivem: !!opts.fivem, skipped: [] };
+    if (opts.fivem) {
+      res.copy = files.slice();
+      for (var q = 0; q < files.length; q++) {
+        var fq = files[q];
+        if (/vehicles.*\.meta$/i.test(fq.name)) try { var tq = td.decode(await fq.read()); collectVeh(tq, res); } catch (e) {}
+      }
+      info.push('Dieser Mod ist schon für FiveM gemacht und wird 1:1 übernommen.');
+      return res;
+    }
+    var ctypes = {};
+    for (var i = 0; i < files.length; i++) if (/^content\.xml$/i.test(files[i].name)) {
+      try { Object.assign(ctypes, contentTypes(td.decode(await files[i].read()))); } catch (e) {}
+    }
+    var seen = {};
+    for (var j = 0; j < files.length; j++) {
+      var f = files[j], low = f.name.toLowerCase();
+      if (STREAM_EXT.test(low)) {
+        if (seen[low]) { warnings.push('„' + f.name + '“ gibt es doppelt, die spätere Version wird benutzt.'); res.stream = res.stream.filter(function (s) { return s.name.toLowerCase() !== low; }); }
+        seen[low] = 1;
+        if (!f.rsc && f.real) { try { var h = (await f.read()).subarray(0, 16); f.rsc = rscFromHeader(h); } catch (e) {} }
+        if (f.rsc && (f.rsc.phys > 16 * 1048576 || f.rsc.virt > 16 * 1048576)) {
+          warnings.push('„' + f.name + '“ ist sehr groß (' + fmtMB(Math.max(f.rsc.phys, f.rsc.virt)) + ' im Speicher). FiveM meldet ab 16 MB „Oversized asset“, das kann zu Texturflackern oder Abstürzen führen. Texturen in OpenIV/Texture Toolkit verkleinern hilft.');
+        }
+        res.stream.push(f);
+      } else if (/\.awc$/i.test(low)) {
+        var bank = dirOf(f.rel).split('/').pop() || 'dlc_sounds';
+        (res.banks[bank] = res.banks[bank] || []).push(f);
+      } else if (/\.rel$/i.test(low)) {
+        res.audio.push(f);
+      } else if (META_EXT.test(low)) {
+        if (SKIP_META.test(low)) continue;
+        var text;
+        try { text = td.decode(await f.read()); } catch (e) { warnings.push(e.message); continue; }
+        var rt = rootTag(text), type = Object.prototype.hasOwnProperty.call(ROOTS, rt) ? ROOTS[rt] : undefined;
+        if (type === null) continue;
+        if (!type) type = ctypes[low];
+        if (!type) for (var n = 0; n < NAMES.length; n++) if (NAMES[n][0].test(low)) { type = NAMES[n][1]; break; }
+        if (!type) { res.skipped.push(f.rel); continue; }
+        if (type === 'VEHICLE_SHOP_DLC_FILE' || type === 'CONTENT_UNLOCKING_META_FILE' || type === 'DLC_TEXT_FILE') continue;
+        if (ORDER.indexOf(type) < 0) { warnings.push('„' + f.name + '“ hat den Typ ' + type + ', den FiveM nicht kennt. Die Datei wird mitkopiert, aber nicht geladen.'); }
+        if (type === 'VEHICLE_METADATA_FILE') collectVeh(text, res);
+        res.metas.push({ f: f, type: type, text: text });
+      } else if (/\.gxt2$/i.test(low)) {
+        // Fahrzeugnamen kommen über client.lua
+      } else if (!/\.(txt|md|pdf|png|jpe?g|gif|bmp|ini|url|html?|rtf|doc|docx|dds|psd|db|log|ini)$/i.test(low)) {
+        res.skipped.push(f.rel);
+      }
+    }
+    if (!res.stream.length) warnings.push('Keine Modell- oder Texturdateien (.yft/.ytd) gefunden.');
+    if (res.stream.length && !res.metas.length) {
+      var yfts = res.stream.filter(function (s) { return /\.yft$/i.test(s.name) && !/_hi\.yft$/i.test(s.name); }).map(function (s) { return s.name.replace(/\.yft$/i, ''); });
+      info.push('Keine Metas gefunden: Das ist ein Replace-Mod. Er ersetzt im Spiel ' + (yfts.length ? 'das Original-Fahrzeug „' + yfts.join('“, „') + '“' : 'Original-Dateien') + '.');
+      res.replace = yfts;
+    }
+    var types = {}; res.metas.forEach(function (m) { types[m.type] = 1; });
+    if (types.WEAPONINFO_FILE) info.push('Bringt eigene Fahrzeugwaffen mit (weapons.meta). Die werden in FiveM mit geladen.');
+    if (res.audio.length || Object.keys(res.banks).length) info.push('Eigene Sounds gefunden, die werden mit eingebunden.');
+    return res;
+  }
+  function collectVeh(text, res) {
+    var items = text.split(/<Item>/i).slice(1);
+    items.forEach(function (it) {
+      var mn = (it.match(/<modelName>\s*([^<]+?)\s*<\/modelName>/i) || [])[1];
+      if (!mn) return;
+      var gn = (it.match(/<gameName>\s*([^<]+?)\s*<\/gameName>/i) || [])[1];
+      var mk = (it.match(/<vehicleMakeName>\s*([^<]*?)\s*<\/vehicleMakeName>/i) || [])[1];
+      var ty = (it.match(/<type>\s*([^<]+?)\s*<\/type>/i) || [])[1] || '';
+      if (res.spawns.some(function (s) { return s.model.toLowerCase() === mn.toLowerCase(); })) return;
+      res.spawns.push({ model: mn, game: gn || mn, make: mk || '', type: ty.replace(/^VEHICLE_TYPE_/i, '') });
+    });
+  }
+
+  // ---------- Resource bauen ----------
+  function slug(s) {
+    return String(s || '').toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+      .replace(/\[[^\]]*\]|\([^)]*\)/g, ' ').replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').replace(/_+/g, '_').slice(0, 40);
+  }
+  function luaStr(s) { return "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\r\n]+/g, ' ') + "'"; }
+
+  // mods: [{analysis, sub (Unterordner oder ''), label}]
+  function plan(mods, o) {
+    o = o || {};
+    var out = [], dataFiles = [], audioDF = [], fileList = [], names = [], warnings = [];
+    var usedStream = {};
+    mods.forEach(function (m) {
+      var a = m.analysis, sub = m.sub ? m.sub + '/' : '';
+      if (a.fivem) {
+        a.copy.forEach(function (f) { out.push({ rel: (m.sub ? m.sub + '/' : '') + f.rel, vf: f }); });
+        return;
+      }
+      a.stream.forEach(function (f) {
+        var k = f.name.toLowerCase();
+        if (usedStream[k]) warnings.push('„' + f.name + '“ steckt in „' + usedStream[k] + '“ und „' + m.label + '“. Im Spiel gewinnt nur eine davon.');
+        usedStream[k] = m.label;
+        out.push({ rel: 'stream/' + sub + f.name, vf: f });
+      });
+      var cnt = {};
+      a.metas.forEach(function (x) {
+        var nm = x.f.name.toLowerCase(); cnt[nm] = (cnt[nm] || 0) + 1;
+        if (cnt[nm] > 1) nm = nm.replace(/(\.\w+)$/, '_' + cnt[nm] + '$1');
+        var rel = 'data/' + sub + nm;
+        out.push({ rel: rel, text: x.text });
+        fileList.push(rel);
+        dataFiles.push({ type: x.type, rel: rel });
+      });
+      a.audio.forEach(function (f) {
+        var rel = 'audio/' + sub + f.name;
+        out.push({ rel: rel, vf: f }); fileList.push(rel);
+        var m2 = f.name.match(/^(.*)\.dat(\d+)\.rel$/i);
+        var t = m2 && ({ '151': 'AUDIO_GAMEDATA', '54': 'AUDIO_SOUNDDATA', '10': 'AUDIO_SYNTHDATA' })[m2[2]];
+        if (t) audioDF.push({ type: t, rel: 'audio/' + sub + m2[1] + '.dat' });
+        else warnings.push('Sounddatei „' + f.name + '“ wird mitkopiert, aber nicht automatisch geladen.');
+      });
+      Object.keys(a.banks).forEach(function (bank) {
+        a.banks[bank].forEach(function (f) { var rel = 'audio/' + sub + 'sfx/' + bank + '/' + f.name; out.push({ rel: rel, vf: f }); fileList.push(rel); });
+        audioDF.push({ type: 'AUDIO_WAVEPACK', rel: 'audio/' + sub + 'sfx/' + bank });
+      });
+      a.spawns.forEach(function (s) { names.push({ game: s.game, label: m.title && mods.length === 1 && a.spawns.length === 1 ? String(m.title).replace(/\[[^\]]*\]|\([^)]*\)/g, '').replace(/\s+/g, ' ').trim() : (s.make ? s.make + ' ' : '') + s.model }); });
+    });
+    var hasNative = mods.some(function (m) { return !m.analysis.fivem; });
+    if (hasNative) {
+      dataFiles.sort(function (x, y) { return ORDER.indexOf(x.type) - ORDER.indexOf(y.type); });
+      var L = [];
+      L.push("fx_version 'cerulean'", "game 'gta5'", '');
+      L.push('author ' + luaStr(o.author || 'Melonenport'));
+      L.push('description ' + luaStr(o.description || 'Umgewandelt mit Melonenport'));
+      L.push("version '1.0.0'", '');
+      if (fileList.length) {
+        L.push('files {');
+        fileList.forEach(function (f, i) { L.push('  ' + luaStr(f) + (i < fileList.length - 1 ? ',' : '')); });
+        L.push('}', '');
+      }
+      dataFiles.forEach(function (d) { L.push('data_file ' + luaStr(d.type) + ' ' + luaStr(d.rel)); });
+      audioDF.forEach(function (d) { L.push('data_file ' + luaStr(d.type) + ' ' + luaStr(d.rel)); });
+      var useNames = o.names !== false && names.length;
+      if (useNames) L.push('', "client_script 'client.lua'");
+      out.push({ rel: 'fxmanifest.lua', text: L.join('\n') + '\n' });
+      if (useNames) {
+        var C = ['-- Fahrzeugnamen fürs Spiel (sonst steht dort NULL)', "Citizen.CreateThread(function()"];
+        names.forEach(function (n) { C.push('  AddTextEntry(' + luaStr(n.game) + ', ' + luaStr(n.label) + ')'); });
+        C.push('end)');
+        out.push({ rel: 'client.lua', text: C.join('\n') + '\n' });
+      }
+    }
+    return { files: out, warnings: warnings, dataFiles: dataFiles, audio: audioDF };
+  }
+
+  return { parseRpf: parseRpf, expandRpf: expandRpf, findCandidates: findCandidates, loadCandidate: loadCandidate, analyze: analyze, plan: plan, slug: slug, fmtMB: fmtMB, NICE: NICE, rscFromHeader: rscFromHeader, sizeFromFlags: sizeFromFlags };
+})();
+if (typeof module !== 'undefined') module.exports = MP;
+
+</script>
+<script>
+// ===== Melonenport Oberfläche =====
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var mk = window.mk || {};
+  var S = { v: 1, theme: 'hacker', outDir: '', mode: 'single', pack: 'melonen_fahrzeuge', auto: true, names: true, cfg: [] };
+  try { Object.assign(S, JSON.parse(localStorage.getItem('mk-settings') || '{}') || {}); } catch (e) {}
+  function save() { try { localStorage.setItem('mk-settings', JSON.stringify(S)); } catch (e) {} }
+  function hx(t, c) { if (window.hx) window.hx(t, c); }
+  function log(t) { $('log').textContent = t; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  var toastT;
+  function toast(t) { var el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { el.classList.remove('on'); }, 1800); }
+  function copy(t) { navigator.clipboard.writeText(t).then(function () { toast('Kopiert: ' + (t.length > 40 ? t.slice(0, 40) + '…' : t)); }); }
+  function base(p) { return String(p).split(/[\\/]/).pop(); }
+  function noExt(n) { return n.replace(/\.(zip|rar|7z|oiv|rpf)$/i, ''); }
+
+  // ---------- Einstellungen ----------
+  $('optTheme').value = S.theme;
+  $('optTheme').onchange = function () { S.theme = this.value; save(); if (window.applyTheme) applyTheme(S.theme); hx('theme → ' + S.theme); };
+  $('optMode').value = S.mode; $('optPack').value = S.pack; $('optAuto').checked = S.auto; $('optNames').checked = S.names;
+  function modeUi() { $('packRow').style.display = S.mode === 'pack' ? '' : 'none'; $('autoRow').style.display = S.mode === 'pack' ? 'none' : ''; render(); }
+  $('optMode').onchange = function () { S.mode = this.value; save(); modeUi(); };
+  $('optPack').onchange = function () { S.pack = MP.slug(this.value) || 'melonen_fahrzeuge'; this.value = S.pack; save(); };
+  $('optAuto').onchange = function () { S.auto = this.checked; save(); };
+  $('optNames').onchange = function () { S.names = this.checked; save(); };
+  function outUi() {
+    if (S.outDir) { $('outPath').textContent = S.outDir; $('outOpen').style.display = ''; $('outPick').textContent = '📁 Anderen Ordner wählen …'; }
+  }
+  $('outPick').onclick = async function () { var d = await mk.pickFolder('Ausgabeordner wählen (z. B. resources deines Servers)'); if (d) { S.outDir = d; save(); outUi(); } };
+  $('outOpen').onclick = function () { if (S.outDir) mk.openFolder(S.outDir); };
+  function cfgUi() { $('cfg').value = S.cfg.map(function (n) { return 'ensure ' + n; }).join('\n'); }
+  function addCfg(n) { if (S.cfg.indexOf(n) < 0) { S.cfg.push(n); if (S.cfg.length > 200) S.cfg.shift(); save(); } cfgUi(); }
+  $('cfgCopy').onclick = function () { if ($('cfg').value) copy($('cfg').value); };
+  outUi(); cfgUi();
+  if (mk.version) mk.version().then(function (v) { $('ver').textContent = 'v' + v; });
+
+  // ---------- Liste ----------
+  var items = [], sel = null, nextId = 1, running = false;
+  function add(src, kind) {
+    src = String(src).trim(); if (!src) return;
+    if (items.some(function (i) { return i.src === src && i.status !== 'err'; })) { toast('Ist schon in der Liste'); return; }
+    var it = { id: 'm' + (nextId++), src: src, kind: kind, title: kind === 'url' ? titleFromUrl(src) : noExt(base(src)), author: '', page: kind === 'url' ? src : '', status: 'wait', msg: 'Wartet …', warnings: [], info: [] };
+    items.push(it); if (!sel) sel = it;
+    hx('queue.push(' + it.title + ')');
+    render(); pump();
+  }
+  function titleFromUrl(u) {
+    var m = u.match(/gta5-mods\.com\/(?:[a-z]{2}\/)?[a-z-]+\/([^/?#]+)/i);
+    if (m) return m[1].replace(/-/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+    return base(u.split('?')[0]) || u;
+  }
+  function stCls(s) { return { wait: '', busy: 'busy', ready: 'ready', done: 'ok', err: 'err' }[s] || ''; }
+  function render() {
+    var L = $('list');
+    if (!items.length) L.innerHTML = '<div class="empty">Noch nichts in der Liste.<br>Mehrere Links? Einfach nacheinander einfügen.</div>';
+    else {
+      L.innerHTML = '';
+      items.forEach(function (it) {
+        var d = document.createElement('div');
+        d.className = 'item ' + it.status + (it === sel ? ' sel' : '');
+        d.innerHTML = '<span class="st ' + stCls(it.status) + '"></span><div style="min-width:0"><div class="n">' + esc(it.title) + '</div><div class="s">' + esc(it.msg) + '</div></div><button class="x" title="Entfernen">✕</button>';
+        d.onclick = function (e) { if (e.target.classList.contains('x')) { remove(it); return; } sel = it; render(); };
+        L.appendChild(d);
+      });
+    }
+    var ready = items.filter(function (i) { return i.status === 'ready' || i.status === 'done'; }).length;
+    $('count').textContent = items.length ? items.length + (items.length === 1 ? ' Mod' : ' Mods') : '';
+    $('convertAll').disabled = !items.some(function (i) { return i.status === 'ready' || (S.mode === 'pack' && i.status === 'done'); }) || running;
+    $('convertAll').textContent = S.mode === 'pack' ? 'Pack bauen' + (ready ? ' (' + ready + ')' : '') : 'Alle umwandeln';
+    detail();
+  }
+  function remove(it) { items = items.filter(function (i) { return i !== it; }); if (sel === it) sel = items[0] || null; render(); }
+  $('clear').onclick = function () { items = items.filter(function (i) { return i.status === 'busy'; }); sel = items[0] || null; render(); };
+
+  // ---------- Detailansicht ----------
+  function detail() {
+    var D = $('detail');
+    if (!sel) {
+      D.innerHTML = '<div id="detailEmpty"><div><div class="big">Fahrzeuge, Flugzeuge &amp; Helis für FiveM</div>' +
+        '<ol><li>Link von <b>gta5-mods.com</b> links einfügen oder die heruntergeladene Datei reinziehen</li>' +
+        '<li>Melonenport lädt, entpackt und sortiert alles von selbst</li>' +
+        '<li>Rechts einmal den <b>resources</b>-Ordner deines Servers wählen</li>' +
+        '<li>Die <b>ensure</b>-Zeile in die server.cfg kopieren, fertig</li></ol>' +
+        '<div style="margin-top:14px;font-size:12px">Tipp: Strg + V fügt einen kopierten Link direkt ein.</div></div></div>';
+      return;
+    }
+    var it = sel, a = it.light, h = [];
+    h.push('<div class="dTitle">' + esc(it.title) + '</div>');
+    var sub = [];
+    if (it.author) sub.push('von <b>' + esc(it.author) + '</b>');
+    if (it.page) sub.push('<a data-url="' + esc(it.page) + '">Mod-Seite öffnen</a>');
+    if (it.file) sub.push('<a data-show="' + esc(it.file) + '">Datei anzeigen</a>');
+    h.push('<div class="dSub">' + sub.join('<span>·</span>') + '</div>');
+    h.push('<div class="bar" id="dBar" style="display:' + (it.pct != null && it.status === 'busy' ? 'block' : 'none') + '"><i style="width:' + (it.pct || 0) + '%"></i></div>');
+    h.push('<div class="dMsg">' + esc(it.msg) + '</div>');
+    if (it.status === 'err') h.push('<div class="card msgs"><div class="e">' + esc(it.error) + '</div></div>');
+
+    if (it.out) {
+      h.push('<div class="card"><h4>Fertig</h4><div class="res"><code>ensure ' + esc(it.out.name) + '</code><button class="btn sm" data-copy="ensure ' + esc(it.out.name) + '">Kopieren</button><button class="btn sm" data-open="' + esc(it.out.dir) + '">Ordner öffnen</button></div>' +
+        '<div class="path">' + esc(it.out.dir) + '</div></div>');
+    }
+    if (it.cands && it.cands.length > 1) {
+      h.push('<div class="card"><h4>Variante</h4><select id="dCand" style="width:100%">' + it.cands.map(function (c, i) { return '<option value="' + i + '"' + (i === it.candIdx ? ' selected' : '') + '>' + esc(c.label) + '</option>'; }).join('') + '</select>' +
+        '<div class="path">Im Archiv stecken mehrere Versionen. Die beste ist schon ausgewählt.</div></div>');
+    }
+    if (a) {
+      if (S.mode === 'single' || a.fivem) {
+        h.push('<div class="card"><h4>Name der Resource</h4><input class="inp" id="dName" value="' + esc(it.resName) + '" spellcheck="false" style="width:100%">' +
+          '<div class="path">So heißt der Ordner, und so trägst du ihn in die server.cfg ein.</div></div>');
+      }
+      if (a.spawns.length) {
+        h.push('<div class="card"><h4>Spawnnamen</h4><div class="chips">' + a.spawns.map(function (s) {
+          return '<span class="chip">' + esc(s.model) + (s.type && s.type !== 'CAR' ? ' <small>' + esc(typeName(s.type)) + '</small>' : '') + '<button data-copy="' + esc(s.model) + '">kopieren</button></span>';
+        }).join('') + '</div></div>');
+      }
+      var msgs = [];
+      (a.info || []).forEach(function (t) { msgs.push('<div class="i">' + esc(t) + '</div>'); });
+      (a.warnings || []).forEach(function (t) { msgs.push('<div class="w">' + esc(t) + '</div>'); });
+      if (msgs.length) h.push('<div class="card msgs"><h4>Hinweise</h4>' + msgs.join('') + '</div>');
+      var rows = [];
+      if (a.fivem) rows.push(['Dateien', a.copy.length + ' (werden 1:1 übernommen)']);
+      else {
+        var ss = a.stream.reduce(function (s, f) { return s + (f.size || 0); }, 0);
+        var ny = a.stream.filter(function (f) { return /\.yft$/i.test(f.name); }).length, nt = a.stream.filter(function (f) { return /\.ytd$/i.test(f.name); }).length;
+        rows.push(['Modelle & Texturen', ny + ' Modelle, ' + nt + ' Texturpakete, ' + a.stream.length + ' Dateien · ' + MP.fmtMB(ss)]);
+        a.metas.forEach(function (m) { rows.push([m.f.name, MP.NICE[m.type] || m.type]); });
+        var nb = Object.keys(a.banks).reduce(function (s, k) { return s + a.banks[k].length; }, 0);
+        if (a.audio.length || nb) rows.push(['Sounds', a.audio.length + ' Sounddaten, ' + nb + ' Audiodateien']);
+        if (a.skipped.length) rows.push(['Übersprungen', a.skipped.length + ' Dateien (nicht für FiveM nötig)']);
+      }
+      h.push('<div class="card"><h4>Inhalt</h4><table class="files">' + rows.map(function (r) { return '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>');
+      if (it.status === 'ready' || it.status === 'done') {
+        h.push('<div style="margin-top:14px;display:flex;gap:8px">' + (S.mode === 'single' || a.fivem ? '<button class="btn main" id="dConvert">' + (it.status === 'done' ? 'Nochmal umwandeln' : 'Jetzt umwandeln') + '</button>' : '<span class="note">Pack-Modus: Unten links auf „Pack bauen“ klicken.</span>') + '</div>');
+      }
+    }
+    D.innerHTML = h.join('');
+    D.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function () { copy(b.getAttribute('data-copy')); }; });
+    D.querySelectorAll('[data-open]').forEach(function (b) { b.onclick = function () { mk.openFolder(b.getAttribute('data-open')); }; });
+    D.querySelectorAll('[data-url]').forEach(function (b) { b.onclick = function () { mk.openUrl(b.getAttribute('data-url')); }; });
+    D.querySelectorAll('[data-show]').forEach(function (b) { b.onclick = function () { mk.showItem(b.getAttribute('data-show')); }; });
+    if ($('dCand')) $('dCand').onchange = function () { chooseCand(it, +this.value); };
+    if ($('dName')) $('dName').onchange = function () { it.resName = MP.slug(this.value) || it.resName; this.value = it.resName; };
+    if ($('dConvert')) $('dConvert').onclick = function () { convertOne(it); };
+  }
+  function typeName(t) { return { PLANE: 'Flugzeug', HELI: 'Heli', BOAT: 'Boot', BIKE: 'Motorrad', BICYCLE: 'Fahrrad', QUADBIKE: 'Quad', TRAIN: 'Zug', TRAILER: 'Anhänger', SUBMARINE: 'U-Boot', BLIMP: 'Luftschiff', AMPHIBIOUS_AUTOMOBILE: 'Amphibie', SUBMARINECAR: 'Tauchauto' }[t] || t; }
+  function upd(it, msg, pct) { it.msg = msg; it.pct = pct; if (it === sel) { var b = $('dBar'); if (b) { b.style.display = pct != null ? 'block' : 'none'; b.firstChild.style.width = (pct || 0) + '%'; } var m = document.querySelector('.dMsg'); if (m) m.textContent = msg; } var row = $('list').children[items.indexOf(it)]; if (row && row.querySelector('.s')) row.querySelector('.s').textContent = msg; log(it.title + ': ' + msg); }
+
+  // ---------- Laden ----------
+  mk.onDl && mk.onDl(function (d) {
+    var it = items.find(function (i) { return i.id === d.id; }); if (!it) return;
+    if (d.state === 'page') upd(it, 'Öffne gta5-mods …', null);
+    else if (d.state === 'check') upd(it, 'Bitte im neuen Fenster bestätigen, dass du kein Bot bist', null);
+    else if (d.state === 'info') { if (d.title) it.title = d.title; if (d.author) it.author = d.author; render(); }
+    else if (d.state === 'progress') {
+      var p = d.total ? Math.round(d.received / d.total * 100) : null;
+      upd(it, 'Lädt herunter … ' + (p != null ? p + ' % (' + MP.fmtMB(d.received) + ' von ' + MP.fmtMB(d.total) + ')' : MP.fmtMB(d.received)), p);
+    }
+  });
+
+  async function pump() {
+    if (pump.busy) return; pump.busy = true;
+    try {
+      var it;
+      while ((it = items.find(function (i) { return i.status === 'wait'; }))) {
+        it.status = 'busy'; render();
+        try { await prepare(it); }
+        catch (e) { fail(it, e); }
+        render();
+        if (it.status === 'ready' && S.mode === 'single' && S.auto && S.outDir) { try { await convertOne(it); } catch (e) {} }
+      }
+    } finally { pump.busy = false; }
+  }
+  function fail(it, e) { it.status = 'err'; it.error = (e && e.message || String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''); it.msg = 'Fehler'; log(it.title + ': ' + it.error); hx('ERR ' + it.error, 'e'); }
+
+  async function prepare(it) {
+    hxBurstSafe(2500);
+    if (it.kind === 'url') {
+      upd(it, 'Starte Download …', null);
+      var r = await mk.fetchMod(it.id, it.src);
+      it.file = r.file; if (r.title) it.title = r.title; if (r.author) it.author = r.author;
+      hx('download ok → ' + base(r.file));
+    } else it.file = it.src;
+    var st = await mk.stat(it.file);
+    if (!st) throw new Error('Datei nicht gefunden: ' + it.file);
+    var files;
+    if (st.dir) { upd(it, 'Durchsuche Ordner …', null); files = await mk.scan(it.file); }
+    else if (/\.(rpf|yft|ytd|ydr|ydd|ybn)$/i.test(it.file)) files = [{ path: it.file, rel: base(it.file), size: st.size }];
+    else {
+      upd(it, 'Entpacke …', null); hx('extract ' + base(it.file));
+      var dir = await mk.extract(it.file);
+      files = await mk.scan(dir);
+      // Archive im Archiv
+      var inner = files.filter(function (f) { return /\.(zip|rar|7z|oiv)$/i.test(f.rel); });
+      for (var k = 0; k < inner.length && k < 10; k++) {
+        try {
+          var d2 = await mk.extract(inner[k].path), f2 = await mk.scan(d2), pre = inner[k].rel.replace(/\.\w+$/, '');
+          f2.forEach(function (f) { f.rel = pre + '/' + f.rel; files.push(f); });
+        } catch (e) {}
+      }
+    }
+    it.cands = MP.findCandidates(files);
+    if (!it.cands.length) throw new Error('In der Datei wurden keine GTA-V-Moddateien gefunden (keine dlc.rpf, .yft oder .ytd). Ist das vielleicht ein Skript oder ein Map-Mod?');
+    await chooseCand(it, 0, true);
+  }
+  function hxBurstSafe(ms) { if (window.hxBurst) window.hxBurst(ms); }
+
+  async function chooseCand(it, idx, first) {
+    it.candIdx = idx; it.status = 'busy'; it.light = null; if (!first) render();
+    var c = it.cands[idx];
+    upd(it, 'Lese ' + c.label + ' …', null); hx('rpf.open ' + c.label);
+    try {
+      var loaded = await MP.loadCandidate(c, mk.readFile);
+      var a = await MP.analyze(loaded, { fivem: c.kind === 'fivem' });
+      it.light = light(a);
+      if (!it.resName || !first) it.resName = defaultName(it, a, c);
+      it.status = 'ready'; it.msg = a.spawns.length ? 'Bereit · ' + a.spawns.map(function (s) { return s.model; }).join(', ') : 'Bereit';
+      a.spawns.forEach(function (s) { hx('found vehicle: ' + s.model + ' [' + s.type + ']'); });
+    } catch (e) { fail(it, e); }
+    if (!first) render();
+  }
+  function defaultName(it, a, c) {
+    if (c.kind === 'fivem' && c.root) return MP.slug(c.root.split('/').pop()) || MP.slug(it.title) || 'fahrzeug';
+    if (a.spawns.length === 1) return MP.slug(a.spawns[0].model);
+    return MP.slug(it.title) || 'fahrzeug';
+  }
+  // schlanke Kopie ohne Dateidaten (spart Arbeitsspeicher)
+  function light(a) {
+    function stub(f) { return { name: f.name, rel: f.rel, size: f.size, rsc: f.rsc }; }
+    var banks = {}; Object.keys(a.banks).forEach(function (k) { banks[k] = a.banks[k].map(stub); });
+    return { fivem: a.fivem, stream: a.stream.map(stub), metas: a.metas.map(function (m) { return { f: stub(m.f), type: m.type, text: m.text }; }), audio: a.audio.map(stub), banks: banks, copy: a.copy.map(stub),
+      spawns: a.spawns, warnings: a.warnings, info: a.info, skipped: a.skipped, replace: a.replace };
+  }
+
+  // ---------- Umwandeln ----------
+  async function needOut() {
+    if (S.outDir) return true;
+    var d = await mk.pickFolder('Wohin sollen die Resources? (z. B. resources deines Servers)');
+    if (!d) return false; S.outDir = d; save(); outUi(); return true;
+  }
+  async function writeMod(it, dir, sub, skipManifest) {
+    var c = it.cands[it.candIdx];
+    var loaded = await MP.loadCandidate(c, mk.readFile);
+    var a = await MP.analyze(loaded, { fivem: c.kind === 'fivem' });
+    var p = MP.plan([{ analysis: a, sub: sub, label: it.title, title: it.title }], { author: it.author, description: it.title + (it.page ? ' – ' + it.page : ''), names: S.names });
+    var list = p.files.filter(function (f) { return !(skipManifest && /^(fxmanifest\.lua|client\.lua)$/.test(f.rel)); });
+    for (var i = 0; i < list.length; i++) {
+      var f = list[i];
+      if (i % 3 === 0) upd(it, 'Schreibe ' + (i + 1) + ' / ' + list.length + ' …', Math.round(i / list.length * 100));
+      if (f.text != null) await mk.writeOut(dir, f.rel, f.text);
+      else if (f.vf.real) await mk.copyOut(dir, f.rel, f.vf.real);
+      else await mk.writeOut(dir, f.rel, await f.vf.read());
+    }
+    return p;
+  }
+  async function convertOne(it) {
+    if (running && !convertOne.inner) return;
+    if (!it.light) return;
+    if (!(await needOut())) return;
+    var own = !running; running = true; it.status = 'busy'; render();
+    try {
+      var o = await mk.prepOut(S.outDir, it.resName);
+      hx('build resource ' + o.name); hxBurstSafe(3000);
+      await writeMod(it, o.dir, '', false);
+      it.out = o; it.status = 'done'; it.msg = 'Fertig · ensure ' + o.name; addCfg(o.name);
+      log('Fertig: ' + o.name + ' liegt in ' + o.dir); hx('resource ' + o.name + ' ready ✓', 'k'); toast('„' + o.name + '“ ist fertig');
+    } catch (e) { fail(it, e); }
+    if (own) running = false;
+    render();
+  }
+  async function convertAll() {
+    if (running) return;
+    var list = items.filter(function (i) { return i.status === 'ready' || i.status === 'done'; });
+    if (!list.length || !(await needOut())) return;
+    running = true; render();
+    try {
+      if (S.mode === 'single') {
+        convertOne.inner = true;
+        for (var i = 0; i < list.length; i++) if (list[i].status === 'ready') await convertOne(list[i]);
+      } else {
+        var native = list.filter(function (i) { return !i.light.fivem; }), ready = list.filter(function (i) { return i.light.fivem; });
+        convertOne.inner = true;
+        for (var r = 0; r < ready.length; r++) await convertOne(ready[r]);
+        if (native.length) {
+          var o = await mk.prepOut(S.outDir, S.pack), used = {}, mods = [];
+          hx('build pack ' + o.name); hxBurstSafe(4000);
+          for (var j = 0; j < native.length; j++) {
+            var it = native[j], sub = MP.slug(it.resName) || 'mod', n = 2;
+            while (used[sub]) sub = (MP.slug(it.resName) || 'mod') + '_' + n++;
+            used[sub] = 1; it.status = 'busy'; render();
+            try { await writeMod(it, o.dir, sub, true); mods.push({ analysis: it.light, sub: sub, label: it.title, title: it.title }); it.status = 'done'; it.msg = 'Im Pack ' + o.name; it.out = o; }
+            catch (e) { fail(it, e); }
+            render();
+          }
+          var p = MP.plan(mods, { author: 'Melonenport', description: 'Fahrzeug-Pack (' + mods.length + ' Mods)', names: S.names });
+          for (var k = 0; k < p.files.length; k++) if (/^(fxmanifest\.lua|client\.lua)$/.test(p.files[k].rel)) await mk.writeOut(o.dir, p.files[k].rel, p.files[k].text);
+          if (p.warnings.length) native[0].light.warnings = native[0].light.warnings.concat(p.warnings.filter(function (w) { return native[0].light.warnings.indexOf(w) < 0; }));
+          log('Fertig: Pack ' + o.name + ' liegt in ' + o.dir); addCfg(o.name); toast('Pack „' + o.name + '“ ist fertig'); hx('pack ' + o.name + ' ready ✓', 'k');
+        }
+      }
+    } finally { convertOne.inner = false; running = false; render(); }
+  }
+  $('convertAll').onclick = convertAll;
+
+  // ---------- Eingabe ----------
+  function addUrlText(t) {
+    var urls = String(t || '').match(/https?:\/\/[^\s"'<>]+/g);
+    if (!urls) { if (t && t.trim()) toast('Das ist kein Link'); return false; }
+    urls.forEach(function (u) { add(u, 'url'); }); return true;
+  }
+  $('urlAdd').onclick = function () { if (addUrlText($('url').value)) $('url').value = ''; };
+  $('url').onkeydown = function (e) { if (e.key === 'Enter') $('urlAdd').onclick(); };
+  document.addEventListener('paste', function (e) {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    var t = e.clipboardData && e.clipboardData.getData('text'); if (t) addUrlText(t);
+  });
+  $('drop').onclick = async function () { (await mk.pickFiles()).forEach(function (p) { add(p, 'file'); }); };
+  var dz = document.body;
+  dz.addEventListener('dragover', function (e) { e.preventDefault(); $('drop').classList.add('over'); });
+  dz.addEventListener('dragleave', function (e) { if (!e.relatedTarget) $('drop').classList.remove('over'); });
+  dz.addEventListener('drop', function (e) {
+    e.preventDefault(); $('drop').classList.remove('over');
+    var fl = e.dataTransfer.files, any = false;
+    for (var i = 0; i < fl.length; i++) { var p = mk.pathForFile(fl[i]); if (p) { add(p, 'file'); any = true; } }
+    if (!any) addUrlText(e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text'));
+  });
+  mk.onOpenFiles && mk.onOpenFiles(function (ps) { ps.forEach(function (p) { add(p, 'file'); }); });
+
+  modeUi();
+})();
+
+</script>
+</body>
+</html>
