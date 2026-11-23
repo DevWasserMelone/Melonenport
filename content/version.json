@@ -1,5 +1,5 @@
 {
-  "version": "1.0.34",
+  "version": "1.0.35",
   "date": "2026-11-23",
-  "changelog": "🍉 Melonenport 1.0.34\n\n🔧 Fix\n• Versehentlich falsche Programmversion wieder korrigiert\n• FiveM-Server verbinden, automatische server.cfg-Einträge und Live-Laden"
+  "changelog": "🍉 Melonenport 1.0.35\n\n✨ Neu\n• Knopf „🚗 Alle Spawnnamen“: alle Fahrzeuge der Liste auf einen Blick, einzeln oder alle auf einmal kopieren\n• Im Fahrzeug-Pack liegt jetzt eine spawnnamen.txt"
 }
