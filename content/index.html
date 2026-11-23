@@ -107,7 +107,7 @@ body.hacker .res code{background:#03110a;color:var(--green)}
   <h1 class="glitch">Melonenport</h1><span class="ver" id="ver">–</span>
   <div class="sp"></div>
   <div class="snowridge" style="position:absolute;left:0;right:0;bottom:-10px;z-index:5"></div>
-  <span class="note" id="hdrInfo"></span>
+  <button class="btn" id="allSpawns" style="padding:4px 12px">🚗 Alle Spawnnamen</button>
 </header>
 <main>
   <section class="col">
@@ -153,7 +153,7 @@ body.hacker .res code{background:#03110a;color:var(--green)}
       <div class="row" id="packRow" style="display:none">
         <label class="t">Name vom Pack</label>
         <input class="inp" id="optPack" spellcheck="false">
-        <div class="path">Das Pack wird bei „Alle umwandeln“ jedes Mal aus der ganzen Liste neu gebaut.</div>
+        <div class="path">Das Pack wird bei „Pack bauen“ jedes Mal aus der ganzen Liste neu gebaut.</div>
       </div>
       <label class="chk" id="autoRow"><input type="checkbox" id="optAuto"><span>Automatisch umwandeln<small>Sobald ein Mod geladen ist, landet er direkt im Ausgabeordner</small></span></label>
       <label class="chk"><input type="checkbox" id="optNames"><span>Fahrzeugnamen eintragen<small>Erstellt eine client.lua, damit im Spiel nicht „NULL“ steht</small></span></label>
@@ -878,8 +878,30 @@ if (typeof module !== 'undefined') module.exports = MP;
   $('clear').onclick = function () { items = items.filter(function (i) { return i.status === 'busy'; }); sel = items[0] || null; render(); };
 
   // ---------- Detailansicht ----------
+  var showAll = false;
+  $('allSpawns').onclick = function () { showAll = true; sel = null; render(); };
+  function allSpawnsView(D) {
+    var rows = [], names = [];
+    items.forEach(function (it) {
+      if (!it.light || !it.light.spawns.length) return;
+      it.light.spawns.forEach(function (s) { names.push(s.model); });
+      rows.push('<tr><td>' + esc(it.title) + '<div class="path">' + esc(it.status === 'done' ? 'Auf dem Server / im Ausgabeordner' : 'Noch nicht umgewandelt') + '</div></td><td><div class="chips" style="justify-content:flex-end">' +
+        it.light.spawns.map(function (s) { return '<span class="chip">' + esc(s.model) + (s.type && s.type !== 'CAR' ? ' <small>' + esc(typeName(s.type)) + '</small>' : '') + '<button data-copy="' + esc(s.model) + '">kopieren</button></span>'; }).join('') + '</div></td></tr>');
+    });
+    var h = '<div class="dTitle">Alle Spawnnamen</div><div class="dSub">' + names.length + ' Fahrzeuge aus ' + rows.length + ' Mods</div>';
+    if (!names.length) h += '<div class="card"><div class="note">Noch keine Fahrzeuge in der Liste. Zieh Mods rein oder füg Links ein.</div></div>';
+    else {
+      h += '<div class="card"><h4>Zum Kopieren</h4><textarea class="cfg" readonly style="height:120px">' + esc(names.join('\n')) + '</textarea>' +
+        '<div style="margin-top:6px;display:flex;gap:6px"><button class="btn sm" data-copy="' + esc(names.join('\n')) + '">Alle kopieren</button></div></div>';
+      h += '<div class="card"><h4>Nach Mod</h4><table class="files">' + rows.join('') + '</table></div>';
+    }
+    D.innerHTML = h;
+    D.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function () { copy(b.getAttribute('data-copy')); }; });
+  }
   function detail() {
     var D = $('detail');
+    if (showAll && !sel) { allSpawnsView(D); return; }
+    showAll = false;
     if (!sel) {
       D.innerHTML = '<div id="detailEmpty"><div><div class="big">Fahrzeuge, Flugzeuge &amp; Helis für FiveM</div>' +
         '<ol><li>Link von <b>gta5-mods.com</b> links einfügen oder die heruntergeladene Datei reinziehen</li>' +
@@ -1098,6 +1120,8 @@ if (typeof module !== 'undefined') module.exports = MP;
             catch (e) { fail(it, e); }
             render();
           }
+          var allN = []; native.forEach(function (x) { if (x.status === 'done') x.light.spawns.forEach(function (sp) { allN.push(sp.model + '   (' + x.title + ')'); }); });
+          await mk.writeOut(o.dir, 'spawnnamen.txt', 'Spawnnamen in diesem Pack:\r\n\r\n' + allN.join('\r\n') + '\r\n');
           var p = MP.plan(mods, { author: 'Melonenport', description: 'Fahrzeug-Pack (' + mods.length + ' Mods)', names: S.names });
           for (var k = 0; k < p.files.length; k++) if (/^(fxmanifest\.lua|client\.lua)$/.test(p.files[k].rel)) await mk.writeOut(o.dir, p.files[k].rel, p.files[k].text);
           if (p.warnings.length) native[0].light.warnings = native[0].light.warnings.concat(p.warnings.filter(function (w) { return native[0].light.warnings.indexOf(w) < 0; }));
